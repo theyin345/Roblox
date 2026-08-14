@@ -24,7 +24,7 @@ local _TeleportService = game:GetService('TeleportService')
 local _VirtualInputManager = game:GetService('VirtualInputManager')
 local _RunService = game:GetService('RunService')
 
--- ==================== waza 原版 UI 架构 ====================
+-- ==================== waza 原版 UI 架构（已修复溢出问题） ====================
 local screenGuiName = "Waza80_BFNF_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
@@ -38,6 +38,7 @@ _ScreenGui.Parent = _CoreGui
 
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
+-- 稍微加宽主面板，并将版本号移到下方，避免右侧挤压出屏幕
 _MainFrame.Size = UDim2.new(0, 220, 0, 48)
 _MainFrame.Position = UDim2.new(0, 20, 0, 20)
 _MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -86,17 +87,18 @@ local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 3, 'rbxassetid:
 local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 4, 'rbxassetid://13945246221')
 local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 5, 'rbxassetid://13903165548')
 
+-- 将版本号文字移到主面板正下方居中对齐，彻底根治右侧挤出屏幕和挤压按钮的问题
 local _TextLabel = Instance.new('TextLabel', _MainFrame)
 _TextLabel.Name = 'Credits'
-_TextLabel.Size = UDim2.new(0, 0, 0, 36)
-_TextLabel.Position = UDim2.new(1, 10, 0, 0)
+_TextLabel.Size = UDim2.new(1, 0, 0, 15)
+_TextLabel.Position = UDim2.new(0, 0, 1, 4)
 _TextLabel.BackgroundTransparency = 1
 _TextLabel.Text = v23
-_TextLabel.TextSize = 14
-_TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+_TextLabel.TextSize = 12
+_TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 _TextLabel.TextStrokeTransparency = 0.6
+_TextLabel.TextXAlignment = Enum.TextXAlignment.Center
 _TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-_TextLabel.AutomaticSize = Enum.AutomaticSize.X
 
 local u66 = _HttpService:GenerateGUID(false)
 _TextButton.ID.Value = u66
@@ -167,7 +169,6 @@ if getgenv().PlayEnabled ~= true then
     _ImageLabel.ImageColor3 = u21
 else
     _ImageLabel.ImageColor3 = u20
-    _TextLabel.TextColor3 = u20
 end
 if getgenv().FarmEnabled ~= true then
     _ImageLabel3.ImageColor3 = u21
@@ -223,12 +224,10 @@ _TextButton.MouseButton1Click:Connect(function()
                 if not getgenv().PlayEnabled and u3 == nil then
                     getgenv().PlayEnabled = true
                     _TweenService:Create(_ImageLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { ImageColor3 = u20 }):Play()
-                    _TweenService:Create(_TextLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { TextColor3 = u20 }):Play()
                 end
             else
                 getgenv().PlayEnabled = false
                 _TweenService:Create(_ImageLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { ImageColor3 = u21 }):Play()
-                _TweenService:Create(_TextLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { TextColor3 = u21 }):Play()
             end
         elseif not u6 then
             u6 = true
@@ -239,7 +238,6 @@ _TextButton.MouseButton1Click:Connect(function()
                 getgenv().PlayEnabled = false
                 _TweenService:Create(_ImageLabel3, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { ImageColor3 = u21 }):Play()
                 _TweenService:Create(_ImageLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { ImageColor3 = u21 }):Play()
-                _TweenService:Create(_TextLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { TextColor3 = u21 }):Play()
             end
         end
     else
@@ -293,7 +291,6 @@ _TextButton2.MouseButton1Click:Connect(function()
                 if not getgenv().PlayEnabled then
                     getgenv().PlayEnabled = true
                     _TweenService:Create(_ImageLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { ImageColor3 = u20 }):Play()
-                    _TweenService:Create(_TextLabel, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { TextColor3 = u20 }):Play()
                 end
                 _TweenService:Create(_ImageLabel3, TweenInfo.new(u4, Enum.EasingStyle.Cubic), { ImageColor3 = u20 }):Play()
             end
@@ -407,7 +404,7 @@ _TextButton5.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== 缝合：fnff.txt 的核心打谱与动态长按判定逻辑 ====================
+-- ==================== 核心打谱与动态长按判定逻辑 ====================
 local FNFState = {
     ProcessedNotes = {},  
     ActiveKeys = {},      
@@ -448,10 +445,8 @@ local function processHit(arrowIdx, note, folder, receptor)
     task.spawn(function()
         local key = Config.KeyBinds[arrowIdx]
         
-        -- 1. 模拟按下按键
         _VirtualInputManager:SendKeyEvent(true, key, false, game)
         
-        -- 2. 检查是否为长条音符 (Hold) 兼容多种命名
         local notesFolder = folder:FindFirstChild("Notes")
         local activeHold = nil
         
@@ -469,7 +464,6 @@ local function processHit(arrowIdx, note, folder, receptor)
         end
         
         if activeHold and receptor then
-            -- 长条动态追踪逻辑（防止过早松开）
             local maxSafetyTimeout = tick() + 15 
             while activeHold and activeHold.Parent and activeHold.Visible do
                 _RunService.Heartbeat:Wait()
@@ -485,11 +479,9 @@ local function processHit(arrowIdx, note, folder, receptor)
                 end
             end
         else
-            -- 短音符维持 0.035 秒后安全弹起，绝不锁死
             task.wait(0.035)
         end
 
-        -- 3. 强制松开按键并重置状态
         _VirtualInputManager:SendKeyEvent(false, key, false, game)
         FNFState.ActiveKeys[arrowIdx] = false
     end)
@@ -520,7 +512,6 @@ local function engageAutoPlayer()
                     
                     local noteY = note.AbsolutePosition.Y
                     
-                    -- 触碰判定线时触发
                     if noteY <= targetY then
                         FNFState.ProcessedNotes[note] = true 
                         
@@ -538,7 +529,6 @@ local function engageAutoPlayer()
     end)
 end
 
--- 监听 PlayEnabled 开关状态
 task.spawn(function()
     local lastState = false
     while task.wait(0.1) do
