@@ -1,39 +1,30 @@
---BFNF
-
 if game.PlaceId ~= 6520999642 then
-    return warn('Please join "Basically FNF: Remix" to use this script!')[cite: 1]
+    return warn('Please join "Basically FNF: Remix" to use this script!')
 end
 
 getgenv().PlayEnabled = getgenv().PlayEnabled or false
 getgenv().FarmEnabled = getgenv().FarmEnabled or false
 getgenv().Sensibility = getgenv().Sensibility or 2
 
-local u1 = loadstring(game:HttpGet('https://raw.githubusercontent.com/Waza80/scripts/main/Notifications.lua'))()[cite: 1]
-local u2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/Waza80/scripts/main/Teleporter.lua'))()[cite: 1]
+local u1 = loadstring(game:HttpGet('https://raw.githubusercontent.com/Waza80/scripts/main/Notifications.lua'))()
+local u2 = loadstring(game:HttpGet('https://raw.githubusercontent.com/Waza80/scripts/main/Teleporter.lua'))()
 local u3 = nil
 local u4 = 0.5
 local v5 = nil
 local u6 = false
-local u7 = {}
-local u8 = {}
-local u9 = {
-    'Left',
-    'Down',
-    'Up',
-    'Right',
-}
 local u10, u11, u12, u13, u14, u15, u16, u17, u18, u19 = false, false, false, false, false, false, false, false, false, false
 local u20 = Color3.fromRGB(225, 225, 0)
 local u21 = Color3.fromRGB(255, 255, 255)
 local _LocalPlayer = game.Players.LocalPlayer
-local v23 = 'v1.0.5 - By waza80'[cite: 1]
+local v23 = 'v1.0.5 - By waza80'
 local _CoreGui = game:GetService('CoreGui')
 local _HttpService = game:GetService('HttpService')
 local _TweenService = game:GetService('TweenService')
 local _TeleportService = game:GetService('TeleportService')
 local _VirtualInputManager = game:GetService('VirtualInputManager')
+local _RunService = game:GetService('RunService')
 
--- ==================== 独立 UI 架构 (不依赖官方 CoreGui) ====================
+-- ==================== waza 原版 UI 架构 ====================
 local screenGuiName = "Waza80_BFNF_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
@@ -45,7 +36,6 @@ _ScreenGui.ResetOnSpawn = false
 _ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 _ScreenGui.Parent = _CoreGui
 
--- 主面板 (替代官方顶栏，采用悬浮窗设计，位于屏幕左上角)
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
 _MainFrame.Size = UDim2.new(0, 220, 0, 48)
@@ -64,7 +54,6 @@ _UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 _UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 _UIListLayout.Padding = UDim.new(0, 6)
 
--- 创建功能按钮的辅助函数
 local function createButton(name, layoutOrder, iconId)
     local btn = Instance.new('TextButton', _MainFrame)
     btn.Name = name
@@ -97,7 +86,6 @@ local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 3, 'rbxassetid:
 local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 4, 'rbxassetid://13945246221')
 local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 5, 'rbxassetid://13903165548')
 
--- 附加版权文字标签
 local _TextLabel = Instance.new('TextLabel', _MainFrame)
 _TextLabel.Name = 'Credits'
 _TextLabel.Size = UDim2.new(0, 0, 0, 36)
@@ -112,8 +100,8 @@ _TextLabel.AutomaticSize = Enum.AutomaticSize.X
 
 local u66 = _HttpService:GenerateGUID(false)
 _TextButton.ID.Value = u66
--- ===========================================================================
 
+-- ==================== 基础辅助函数 ====================
 function GetClosestP2()
     local _huge = math.huge
     local v51, v52, v53 = pairs(workspace.PersonalStages:GetChildren())
@@ -143,16 +131,6 @@ function fireproximityprompt(p56)
     p56.HoldDuration = _HoldDuration
 end
 
-function shuffle(p58)
-    for v59 = #p58, 2, -1 do
-        local v60 = math.random(v59)
-        local v61 = p58[v60]
-        p58[v60] = p58[v59]
-        p58[v59] = v61
-    end
-    return p58
-end
-
 local u62 = _LocalPlayer
 if not isfile('BFNF-Waza80-ST') then
     v5 = true
@@ -164,12 +142,26 @@ until game:GetService('Players').LocalPlayer.PlayerGui.Main.Loading.Visible == f
 
 local _TPPart = workspace.Interactables.TPPart
 local _SongSelect = u62.PlayerGui.Main.SongSelect
-local u65 = _HttpService:GenerateGUID(false)
 
-u8.Left = u62.PlayerGui.Main.MainFrame.Menu.Settings.Controls.KeyL.Input.Text
-u8.Down = u62.PlayerGui.Main.MainFrame.Menu.Settings.Controls.KeyD.Input.Text
-u8.Up = u62.PlayerGui.Main.MainFrame.Menu.Settings.Controls.KeyU.Input.Text
-u8.Right = u62.PlayerGui.Main.MainFrame.Menu.Settings.Controls.KeyR.Input.Text
+-- ==================== 键位配置 ====================
+local Config = {
+    KeyBinds = {
+        [1] = Enum.KeyCode.A, 
+        [2] = Enum.KeyCode.S, 
+        [3] = Enum.KeyCode.W, 
+        [4] = Enum.KeyCode.D
+    },
+}
+
+task.spawn(function()
+    pcall(function()
+        local settingsMenu = u62.PlayerGui.Main.MainFrame.Menu.Settings.Controls
+        Config.KeyBinds[1] = Enum.KeyCode[settingsMenu.KeyL.Input.Text] or Enum.KeyCode.A
+        Config.KeyBinds[2] = Enum.KeyCode[settingsMenu.KeyD.Input.Text] or Enum.KeyCode.S
+        Config.KeyBinds[3] = Enum.KeyCode[settingsMenu.KeyU.Input.Text] or Enum.KeyCode.W
+        Config.KeyBinds[4] = Enum.KeyCode[settingsMenu.KeyR.Input.Text] or Enum.KeyCode.D
+    end)
+end)
 
 if getgenv().PlayEnabled ~= true then
     _ImageLabel.ImageColor3 = u21
@@ -183,7 +175,7 @@ else
     _ImageLabel3.ImageColor3 = u20
 end
 
--- 按钮交互逻辑恢复
+-- ==================== waza 按钮交互逻辑 ====================
 _TextButton.MouseEnter:Connect(function()
     _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 24, 0, 24) }):Play()
     u10 = true
@@ -415,102 +407,153 @@ _TextButton5.MouseButton1Click:Connect(function()
     end
 end)
 
--- 游戏内匹配判定绑定
-if u62:FindFirstChild('CurrentMatch') then
-    local currentPlayerData = u62:FindFirstChild('File') and u62.File:FindFirstChild('CurrentPlayer')
-    if currentPlayerData and u62.PlayerGui:FindFirstChild('Main') then
-        local matchFrame = u62.PlayerGui.Main:FindFirstChild('MatchFrame')
-        if matchFrame then
-            local v108 = matchFrame['KeySync' .. currentPlayerData.Value.Name:sub(7)]
-            u7.Left = v108.Arrow1
-            u7.Down = v108.Arrow2
-            u7.Up = v108.Arrow3
-            u7.Right = v108.Arrow4
+-- ==================== 缝合：fnff.txt 的核心打谱与动态长按判定逻辑 ====================
+local FNFState = {
+    ProcessedNotes = {},  
+    ActiveKeys = {},      
+    MainLoop = nil
+}
+
+local function releaseAllKeys()
+    for arrowIdx, isPressed in pairs(FNFState.ActiveKeys) do
+        if isPressed then
+            _VirtualInputManager:SendKeyEvent(false, Config.KeyBinds[arrowIdx], false, game)
+            FNFState.ActiveKeys[arrowIdx] = false
         end
     end
 end
 
-local v111 = u62.ChildAdded:Connect(function(p109)
-    if p109:IsA('BoolValue') and p109.Name == 'CurrentMatch' then
-        local currentPlayerData = u62:FindFirstChild('File') and u62.File:FindFirstChild('CurrentPlayer')
-        if currentPlayerData and u62.PlayerGui:FindFirstChild('Main') then
-            local matchFrame = u62.PlayerGui.Main:FindFirstChild('MatchFrame')
-            if matchFrame then
-                local v110 = matchFrame['KeySync' .. currentPlayerData.Value.Name:sub(7)]
-                u7.Left = v110.Arrow1
-                u7.Down = v110.Arrow2
-                u7.Up = v110.Arrow3
-                u7.Right = v110.Arrow4
+local function getActiveKeySync()
+    local mainGui = u62.PlayerGui:FindFirstChild("Main")
+    if not mainGui then return nil end
+    
+    local matchFrame = mainGui:FindFirstChild("MatchFrame")
+    if not (matchFrame and matchFrame.Visible) then return nil end
+    
+    local playerSide = "KeySync1"
+    local file = u62:FindFirstChild("File")
+    if file and file:FindFirstChild("CurrentPlayer") then
+        if file.CurrentPlayer.Value and file.CurrentPlayer.Value.Name == "Player2" then
+            playerSide = "KeySync2"
+        end
+    end
+    
+    return matchFrame:FindFirstChild(playerSide)
+end
+
+local function processHit(arrowIdx, note, folder, receptor)
+    if FNFState.ActiveKeys[arrowIdx] then return end 
+    FNFState.ActiveKeys[arrowIdx] = true
+    
+    task.spawn(function()
+        local key = Config.KeyBinds[arrowIdx]
+        
+        -- 1. 模拟按下按键
+        _VirtualInputManager:SendKeyEvent(true, key, false, game)
+        
+        -- 2. 检查是否为长条音符 (Hold) 兼容多种命名
+        local notesFolder = folder:FindFirstChild("Notes")
+        local activeHold = nil
+        
+        if notesFolder then
+            activeHold = notesFolder:FindFirstChild("Hold_" .. tostring(note.Name))
+            if not activeHold then
+                for _, child in ipairs(notesFolder:GetChildren()) do
+                    local lowerName = string.lower(child.Name)
+                    if string.find(lowerName, "hold") or string.find(lowerName, "tail") or string.find(lowerName, "sust") then
+                        activeHold = child
+                        break
+                    end
+                end
+            end
+        end
+        
+        if activeHold and receptor then
+            -- 长条动态追踪逻辑（防止过早松开）
+            local maxSafetyTimeout = tick() + 15 
+            while activeHold and activeHold.Parent and activeHold.Visible do
+                _RunService.Heartbeat:Wait()
+                if tick() > maxSafetyTimeout then break end
+                
+                local targetY = receptor.AbsolutePosition.Y
+                local holdY = activeHold.AbsolutePosition.Y
+                local holdHeight = activeHold.AbsoluteSize.Y
+                local holdBottomY = holdY + holdHeight
+                
+                if holdBottomY <= targetY + 5 or holdHeight < 5 then
+                    break
+                end
+            end
+        else
+            -- 短音符维持 0.035 秒后安全弹起，绝不锁死
+            task.wait(0.035)
+        end
+
+        -- 3. 强制松开按键并重置状态
+        _VirtualInputManager:SendKeyEvent(false, key, false, game)
+        FNFState.ActiveKeys[arrowIdx] = false
+    end)
+end
+
+local function engageAutoPlayer()
+    if FNFState.MainLoop then FNFState.MainLoop:Disconnect() end
+    releaseAllKeys()
+    
+    FNFState.MainLoop = _RunService.Heartbeat:Connect(function()
+        if not getgenv().PlayEnabled then return end
+        
+        local KeySync = getActiveKeySync()
+        if not KeySync then return end
+        
+        for i = 1, 4 do
+            local folder = KeySync:FindFirstChild("Arrow" .. i)
+            local receptor = folder and folder:FindFirstChild("Arrow")
+            local notes = folder and folder:FindFirstChild("Notes")
+            
+            if receptor and notes then
+                local targetY = receptor.AbsolutePosition.Y
+                
+                for _, note in ipairs(notes:GetChildren()) do
+                    if FNFState.ProcessedNotes[note] or not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or string.find(string.lower(note.Name), "hold") then 
+                        continue 
+                    end
+                    
+                    local noteY = note.AbsolutePosition.Y
+                    
+                    -- 触碰判定线时触发
+                    if noteY <= targetY then
+                        FNFState.ProcessedNotes[note] = true 
+                        
+                        processHit(i, note, folder, receptor)
+                        
+                        note.AncestryChanged:Once(function() 
+                            FNFState.ProcessedNotes[note] = nil 
+                        end)
+                        
+                        break 
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- 监听 PlayEnabled 开关状态
+task.spawn(function()
+    local lastState = false
+    while task.wait(0.1) do
+        local currentState = getgenv().PlayEnabled
+        if currentState ~= lastState then
+            lastState = currentState
+            if currentState then
+                engageAutoPlayer()
+            else
+                if FNFState.MainLoop then FNFState.MainLoop:Disconnect() end
+                releaseAllKeys()
             end
         end
     end
 end)
-local v113 = u62.ChildRemoved:Connect(function(p112)
-    if p112:IsA('BoolValue') and p112.Name == 'CurrentMatch' then
-        u7.Left = nil
-        u7.Down = nil
-        u7.Up = nil
-        u7.Right = nil
-    end
-end)
-
-local function v127()
-    local v114 = u65
-
-    while task.wait() and (_ScreenGui.Parent and v114 == u65) do
-        repeat
-            task.wait()
-        until u7.Right ~= nil and getgenv().PlayEnabled == true
-
-        if v114 ~= u65 then break end
-
-        local v115, v116, v117 = pairs(u9)
-
-        while true do
-            local u118
-            v117, u118 = v115(v116, v117)
-            if v117 == nil then break end
-
-            task.spawn(function()
-                if not u7[u118] or not u7[u118]:FindFirstChild('Notes') then return end
-                local v119, v120, v121 = pairs(u7[u118].Notes:GetChildren())
-
-                while true do
-                    local u122
-                    v121, u122 = v119(v120, v121)
-                    if v121 == nil then break end
-
-                    if u7[u118].AbsolutePosition.y + getgenv().Sensibility > u122.AbsolutePosition.y then
-                        task.spawn(function()
-                            if u8[u118] and Enum.KeyCode[u8[u118]] then
-                                _VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[u8[u118]], false, game)
-                            end
-
-                            local v123, v124, v125 = pairs(u7[u118].Notes:GetChildren())
-                            while true do
-                                local v126
-                                v125, v126 = v123(v124, v125)
-                                if v125 == nil then break end
-                                if v126:IsA('Frame') and v126.Name == u122.Name then
-                                    u122 = v126
-                                    break
-                                end
-                            end
-
-                            repeat
-                                task.wait()
-                            until not u122 or u122:FindFirstChild('Hold') == nil or u7[u118].AbsolutePosition.Y > u122.Hold.End.AbsolutePosition.Y or not u62:FindFirstChild('CurrentMatch')
-
-                            if u8[u118] and Enum.KeyCode[u8[u118]] then
-                                _VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[u8[u118]], false, game)
-                            end
-                        end)
-                    end
-                end
-            end)
-        end
-    end
-end
 
 if v5 == true then
     task.spawn(function()
@@ -520,7 +563,7 @@ if v5 == true then
     end)
 end
 
--- 自动挂机 (AutoFarm) 核心循环
+-- ==================== 自动挂机 (AutoFarm) 核心循环 ====================
 task.spawn(function()
     while task.wait() and _ScreenGui.Parent do
         if getgenv().FarmEnabled == true and u62:FindFirstChild('CurrentMatch') == nil then
@@ -555,16 +598,3 @@ task.spawn(function()
         end
     end
 end)
-
-while task.wait() and _ScreenGui.Parent do
-    repeat
-        task.wait()
-    until u7.Right ~= nil and getgenv().PlayEnabled == true
-
-    local v128 = task.spawn(v127)
-    task.wait(15)
-    task.cancel(v128)
-end
-
-v111:Disconnect()
-v113:Disconnect()
