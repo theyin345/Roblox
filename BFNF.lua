@@ -25,7 +25,7 @@ local _VirtualInputManager = game:GetService('VirtualInputManager')
 local _RunService = game:GetService('RunService')
 local _UserInputService = game:GetService('UserInputService')
 
--- ==================== 手机端专属响应式 UI 架构 ====================
+-- ==================== 手机端适配：版本号置顶，5个按钮完美同框 ====================
 local screenGuiName = "Waza80_BFNF_Mobile_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
@@ -37,11 +37,11 @@ _ScreenGui.ResetOnSpawn = false
 _ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 _ScreenGui.Parent = _CoreGui
 
+-- 主背景框（专门容纳5个按钮）
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
--- 适配手机端：使用更紧凑的尺寸，并放置在屏幕左上角安全区内
-_MainFrame.Size = UDim2.new(0, 210, 0, 42)
-_MainFrame.Position = UDim2.new(0, 15, 0, 40)
+_MainFrame.Size = UDim2.new(0, 215, 0, 44)
+_MainFrame.Position = UDim2.new(0, 15, 0, 50) -- 往下挪一点，留出上方文字的空间
 _MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 _MainFrame.BackgroundTransparency = 0.2
 _MainFrame.BorderSizePixel = 0
@@ -56,7 +56,7 @@ _UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 _UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 _UIListLayout.Padding = UDim.new(0, 5)
 
--- ==================== 手机端拖拽支持 (Draggable) ====================
+-- ==================== 手机端全局拖拽支持 (Draggable) ====================
 local dragging, dragInput, dragStart, startPos
 
 _MainFrame.InputBegan:Connect(function(input)
@@ -91,10 +91,23 @@ _UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
+-- 将版本号文字移到主面板的“正上方”
+local _TextLabel = Instance.new('TextLabel', _MainFrame)
+_TextLabel.Name = 'Credits'
+_TextLabel.Size = UDim2.new(1, 0, 0, 15)
+_TextLabel.Position = UDim2.new(0, 0, 0, -18) -- 浮动在背景框上方
+_TextLabel.BackgroundTransparency = 1
+_TextLabel.Text = v23
+_TextLabel.TextSize = 11
+_TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+_TextLabel.TextStrokeTransparency = 0.6
+_TextLabel.TextXAlignment = Enum.TextXAlignment.Center
+_TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+
 local function createButton(name, layoutOrder, iconId)
     local btn = Instance.new('TextButton', _MainFrame)
     btn.Name = name
-    btn.Size = UDim2.new(0, 32, 0, 32)
+    btn.Size = UDim2.new(0, 34, 0, 34)
     btn.Text = ''
     btn.LayoutOrder = layoutOrder
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -122,19 +135,6 @@ local _TextButton2, _ImageLabel3 = createButton('AutoFarmButton', 2, 'rbxassetid
 local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 3, 'rbxassetid://13903165323')
 local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 4, 'rbxassetid://13945246221')
 local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 5, 'rbxassetid://13903165548')
-
--- 放置在面板正下方，字号调小防止占用过多空间
-local _TextLabel = Instance.new('TextLabel', _MainFrame)
-_TextLabel.Name = 'Credits'
-_TextLabel.Size = UDim2.new(1, 0, 0, 14)
-_TextLabel.Position = UDim2.new(0, 0, 1, 3)
-_TextLabel.BackgroundTransparency = 1
-_TextLabel.Text = v23
-_TextLabel.TextSize = 11
-_TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-_TextLabel.TextStrokeTransparency = 0.6
-_TextLabel.TextXAlignment = Enum.TextXAlignment.Center
-_TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 
 local u66 = _HttpService:GenerateGUID(false)
 _TextButton.ID.Value = u66
