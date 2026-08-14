@@ -434,7 +434,7 @@ _TextButton5.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== 核心打谱与 Remote 抓包直连判定逻辑 ====================
+-- ==================== 核心打谱：保留原版长条逻辑 + 抓包直连 Remote ====================
 local FNFState = {
     ProcessedNotes = {},  
     ActiveKeys = {},      
@@ -471,7 +471,7 @@ local function getActiveKeySync()
     return matchFrame:FindFirstChild(playerSide)
 end
 
--- 结合 RemoteFireServer 与双重保险视觉高亮的点击函数
+-- 结合长条原版判定和抓包直连的点击函数
 local function processHit(arrowIdx, note, folder, receptor)
     if FNFState.ActiveKeys[arrowIdx] then return end 
     FNFState.ActiveKeys[arrowIdx] = true
@@ -479,7 +479,7 @@ local function processHit(arrowIdx, note, folder, receptor)
     task.spawn(function()
         local key = Config.KeyBinds[arrowIdx]
         
-        -- 1. 核心：直接发送你抓到的 Remote 判定包给服务器
+        -- 1. 触发抓包的 Remote 发包
         pcall(function()
             NotesRemote:FireServer(
                 {
@@ -491,18 +491,53 @@ local function processHit(arrowIdx, note, folder, receptor)
             )
         end)
         
-        -- 2. 视觉轻微高亮（模拟按下）
+        -- 2. 模拟键盘按下以维持视觉高亮
         pcall(function()
             _VirtualInputManager:SendKeyEvent(true, key, false, game)
         end)
         
-        task.wait(0.04) -- 维持极短点按视觉，不产生锁死
+        local notesFolder = folder:FindFirstChild("Notes")
+        local activeHold = nil
         
-        -- 3. 强制释放
+        if notesFolder then
+            activeHold = notesFolder:FindFirstChild("Hold_" .. tostring(note.Name))
+            if not activeHold then
+                for _, child in ipairs(notesFolder:GetChildren()) do
+                    local lowerName = string.lower(child.Name)
+                    if string.find(lowerName, "hold") or string.find(lowerName, "tail") or string.find(lowerName, "sust") then
+                        activeHold = child
+                        break
+                    end
+                end
+            end
+        end
+        
+        -- 3. 完整保留原版长条判断循环逻辑
+        if activeHold and receptor then
+            local maxSafetyTimeout = tick() + 15 -- 维持原版的 15 秒保险
+            while activeHold and activeHold.Parent and activeHold.Visible do
+                _RunService.Heartbeat:Wait()
+                if tick() > maxSafetyTimeout then break end
+                
+                local targetY = receptor.AbsolutePosition.Y
+                local holdY = activeHold.AbsolutePosition.Y
+                local holdHeight = activeHold.AbsoluteSize.Y
+                local holdBottomY = holdY + holdHeight
+                
+                if holdBottomY <= targetY + 5 or holdHeight < 5 then
+                    break
+                end
+            end
+        else
+            task.wait(Config.TapDuration)
+        end
+
+        -- 4. 释放键盘按键
         pcall(function()
             _VirtualInputManager:SendKeyEvent(false, key, false, game)
         end)
         
+        task.wait(0.02)
         FNFState.ActiveKeys[arrowIdx] = false
     end)
 end
