@@ -97,7 +97,6 @@ _UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- 采用绝对 X 坐标偏移创建按钮，确保不依赖布局插件，稳稳排在右侧
 local function createButton(name, xOffset, iconId)
     local btn = Instance.new('TextButton', _MainFrame)
     btn.Name = name
@@ -124,7 +123,6 @@ local function createButton(name, xOffset, iconId)
     return btn, icon
 end
 
--- 从左到右依次排列 5 个按钮（起始 X 坐标从 115 开始，间距 38）
 local _TextButton, _ImageLabel = createButton('AutoPlayButton', 115, 'rbxassetid://13882953872')
 local _TextButton2, _ImageLabel3 = createButton('AutoFarmButton', 153, 'rbxassetid://13902591674')
 local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 191, 'rbxassetid://13903165323')
@@ -436,21 +434,22 @@ _TextButton5.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== 核心打谱与防卡死长按/单点判定逻辑 ====================
+-- ==================== 核心打谱与 Remote 抓包直连判定逻辑 ====================
 local FNFState = {
     ProcessedNotes = {},  
     ActiveKeys = {},      
     MainLoop = nil
 }
 
+local NotesRemote = game:GetService("ReplicatedStorage").Remotes.Notes
+
 local function releaseAllKeys()
-    for arrowIdx, isPressed in pairs(FNFState.ActiveKeys) do
-        if isPressed then
-            pcall(function()
-                _VirtualInputManager:SendKeyEvent(false, Config.KeyBinds[arrowIdx], false, game)
-            end)
-            FNFState.ActiveKeys[arrowIdx] = false
-        end
+    for arrowIdx = 1, 4 do
+        local key = Config.KeyBinds[arrowIdx]
+        pcall(function()
+            _VirtualInputManager:SendKeyEvent(false, key, false, game)
+        end)
+        FNFState.ActiveKeys[arrowIdx] = false
     end
 end
 
@@ -472,7 +471,7 @@ local function getActiveKeySync()
     return matchFrame:FindFirstChild(playerSide)
 end
 
--- 具备双重保险和 1.5 秒超时强解的点击处理函数
+-- 结合 RemoteFireServer 与双重保险视觉高亮的点击函数
 local function processHit(arrowIdx, note, folder, receptor)
     if FNFState.ActiveKeys[arrowIdx] then return end 
     FNFState.ActiveKeys[arrowIdx] = true
@@ -480,52 +479,30 @@ local function processHit(arrowIdx, note, folder, receptor)
     task.spawn(function()
         local key = Config.KeyBinds[arrowIdx]
         
-        -- 发送按下指令
+        -- 1. 核心：直接发送你抓到的 Remote 判定包给服务器
+        pcall(function()
+            NotesRemote:FireServer(
+                {
+                    tostring(arrowIdx),
+                    os.clock()
+                },
+                0.0074,
+                1
+            )
+        end)
+        
+        -- 2. 视觉轻微高亮（模拟按下）
         pcall(function()
             _VirtualInputManager:SendKeyEvent(true, key, false, game)
         end)
         
-        local notesFolder = folder:FindFirstChild("Notes")
-        local activeHold = nil
+        task.wait(0.04) -- 维持极短点按视觉，不产生锁死
         
-        if notesFolder then
-            activeHold = notesFolder:FindFirstChild("Hold_" .. tostring(note.Name))
-            if not activeHold then
-                for _, child in ipairs(notesFolder:GetChildren()) do
-                    local lowerName = string.lower(child.Name)
-                    if string.find(lowerName, "hold") or string.find(lowerName, "tail") or string.find(lowerName, "sust") then
-                        activeHold = child
-                        break
-                    end
-                end
-            end
-        end
-        
-        if activeHold and receptor then
-            local maxSafetyTimeout = tick() + 1.5 -- 缩短至 1.5 秒硬性切断，防止残留死锁卡死
-            while activeHold and activeHold.Parent and activeHold.Visible do
-                _RunService.Heartbeat:Wait()
-                if tick() > maxSafetyTimeout then break end
-                
-                local targetY = receptor.AbsolutePosition.Y
-                local holdY = activeHold.AbsolutePosition.Y
-                local holdHeight = activeHold.AbsoluteSize.Y
-                local holdBottomY = holdY + holdHeight
-                
-                if holdBottomY <= targetY + 5 or holdHeight < 5 then
-                    break
-                end
-            end
-        else
-            task.wait(Config.TapDuration)
-        end
-
-        -- 强制发送松开指令（无论中间是否发生意外都会执行）
+        -- 3. 强制释放
         pcall(function()
             _VirtualInputManager:SendKeyEvent(false, key, false, game)
         end)
         
-        task.wait(0.02)
         FNFState.ActiveKeys[arrowIdx] = false
     end)
 end
@@ -555,7 +532,6 @@ local function engageAutoPlayer()
                     
                     local noteY = note.AbsolutePosition.Y
                     
-                    -- 直接采用最原始的 <= 判定，不使用 HitPixels 误差阈值
                     if noteY <= targetY then
                         FNFState.ProcessedNotes[note] = true 
                         
