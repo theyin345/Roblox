@@ -23,9 +23,10 @@ local _TweenService = game:GetService('TweenService')
 local _TeleportService = game:GetService('TeleportService')
 local _VirtualInputManager = game:GetService('VirtualInputManager')
 local _RunService = game:GetService('RunService')
+local _UserInputService = game:GetService('UserInputService')
 
--- ==================== waza 原版 UI 架构（已修复溢出问题） ====================
-local screenGuiName = "Waza80_BFNF_UI"
+-- ==================== 手机端专属响应式 UI 架构 ====================
+local screenGuiName = "Waza80_BFNF_Mobile_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
 end
@@ -38,9 +39,9 @@ _ScreenGui.Parent = _CoreGui
 
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
--- 稍微加宽主面板，并将版本号移到下方，避免右侧挤压出屏幕
-_MainFrame.Size = UDim2.new(0, 220, 0, 48)
-_MainFrame.Position = UDim2.new(0, 20, 0, 20)
+-- 适配手机端：使用更紧凑的尺寸，并放置在屏幕左上角安全区内
+_MainFrame.Size = UDim2.new(0, 210, 0, 42)
+_MainFrame.Position = UDim2.new(0, 15, 0, 40)
 _MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 _MainFrame.BackgroundTransparency = 0.2
 _MainFrame.BorderSizePixel = 0
@@ -53,12 +54,47 @@ _UIListLayout.FillDirection = Enum.FillDirection.Horizontal
 _UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 _UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 _UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-_UIListLayout.Padding = UDim.new(0, 6)
+_UIListLayout.Padding = UDim.new(0, 5)
+
+-- ==================== 手机端拖拽支持 (Draggable) ====================
+local dragging, dragInput, dragStart, startPos
+
+_MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = _MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+_MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+_UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        _MainFrame.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
 
 local function createButton(name, layoutOrder, iconId)
     local btn = Instance.new('TextButton', _MainFrame)
     btn.Name = name
-    btn.Size = UDim2.new(0, 36, 0, 36)
+    btn.Size = UDim2.new(0, 32, 0, 32)
     btn.Text = ''
     btn.LayoutOrder = layoutOrder
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -69,7 +105,7 @@ local function createButton(name, layoutOrder, iconId)
     
     local icon = Instance.new('ImageLabel', btn)
     icon.Name = 'Icon'
-    icon.Size = UDim2.new(0, 22, 0, 22)
+    icon.Size = UDim2.new(0, 20, 0, 20)
     icon.AnchorPoint = Vector2.new(0.5, 0.5)
     icon.Position = UDim2.new(0.5, 0, 0.5, 0)
     icon.Image = iconId
@@ -87,14 +123,14 @@ local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 3, 'rbxassetid:
 local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 4, 'rbxassetid://13945246221')
 local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 5, 'rbxassetid://13903165548')
 
--- 将版本号文字移到主面板正下方居中对齐，彻底根治右侧挤出屏幕和挤压按钮的问题
+-- 放置在面板正下方，字号调小防止占用过多空间
 local _TextLabel = Instance.new('TextLabel', _MainFrame)
 _TextLabel.Name = 'Credits'
-_TextLabel.Size = UDim2.new(1, 0, 0, 15)
-_TextLabel.Position = UDim2.new(0, 0, 1, 4)
+_TextLabel.Size = UDim2.new(1, 0, 0, 14)
+_TextLabel.Position = UDim2.new(0, 0, 1, 3)
 _TextLabel.BackgroundTransparency = 1
 _TextLabel.Text = v23
-_TextLabel.TextSize = 12
+_TextLabel.TextSize = 11
 _TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 _TextLabel.TextStrokeTransparency = 0.6
 _TextLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -176,18 +212,18 @@ else
     _ImageLabel3.ImageColor3 = u20
 end
 
--- ==================== waza 按钮交互逻辑 ====================
+-- ==================== 按钮交互逻辑 ====================
 _TextButton.MouseEnter:Connect(function()
-    _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 24, 0, 24) }):Play()
+    _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 22, 0, 22) }):Play()
     u10 = true
 end)
 _TextButton.MouseLeave:Connect(function()
     u15 = false
-    _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 22, 0, 22) }):Play()
+    _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 20, 0, 20) }):Play()
     u10 = false
 end)
 _TextButton.MouseButton1Down:Connect(function()
-    _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 20, 0, 20) }):Play()
+    _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 18, 0, 18) }):Play()
     local u67 = true
     local u68 = false
     local u69 = _TextButton.MouseLeave:Connect(function() u67 = false end)
@@ -214,7 +250,7 @@ _TextButton.MouseButton1Down:Connect(function()
     end)
 end)
 _TextButton.MouseButton1Up:Connect(function()
-    local targetSize = u10 and UDim2.new(0, 24, 0, 24) or UDim2.new(0, 22, 0, 22)
+    local targetSize = u10 and UDim2.new(0, 22, 0, 22) or UDim2.new(0, 20, 0, 20)
     _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = targetSize }):Play()
 end)
 _TextButton.MouseButton1Click:Connect(function()
