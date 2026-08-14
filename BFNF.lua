@@ -16,6 +16,7 @@ local u10, u11, u12, u13, u14, u15, u16, u17, u18, u19 = false, false, false, fa
 local u20 = Color3.fromRGB(225, 225, 0)
 local u21 = Color3.fromRGB(255, 255, 255)
 local _LocalPlayer = game.Players.LocalPlayer
+local v23 = 'v1.0.5 - By waza80'
 local _CoreGui = game:GetService('CoreGui')
 local _HttpService = game:GetService('HttpService')
 local _TweenService = game:GetService('TweenService')
@@ -24,7 +25,7 @@ local _VirtualInputManager = game:GetService('VirtualInputManager')
 local _RunService = game:GetService('RunService')
 local _UserInputService = game:GetService('UserInputService')
 
--- ==================== 手机端精简版：无文字、按钮靠左 ====================
+-- ==================== 手机端适配：长背景框容纳左侧文字与右侧五个按钮 ====================
 local screenGuiName = "Waza80_BFNF_Mobile_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
@@ -36,11 +37,11 @@ _ScreenGui.ResetOnSpawn = false
 _ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 _ScreenGui.Parent = _CoreGui
 
--- 主背景框（宽度收窄，完全贴合 5 个按钮并靠左）
+-- 主背景框（加长宽度以完美包裹文字和按钮）
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
-_MainFrame.Size = UDim2.new(0, 200, 0, 42)
-_MainFrame.Position = UDim2.new(0, 10, 0, 20)
+_MainFrame.Size = UDim2.new(0, 310, 0, 44)
+_MainFrame.Position = UDim2.new(0, 15, 0, 30)
 _MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 _MainFrame.BackgroundTransparency = 0.2
 _MainFrame.BorderSizePixel = 0
@@ -48,12 +49,32 @@ _MainFrame.BorderSizePixel = 0
 local _UICorner = Instance.new('UICorner', _MainFrame)
 _UICorner.CornerRadius = UDim.new(0, 8)
 
-local _UIListLayout = Instance.new('UIListLayout', _MainFrame)
+-- 版本号文字（固定在主背景框左侧内部）
+local _TextLabel = Instance.new('TextLabel', _MainFrame)
+_TextLabel.Name = 'Credits'
+_TextLabel.Size = UDim2.new(0, 95, 1, 0)
+_TextLabel.Position = UDim2.new(0, 8, 0, 0)
+_TextLabel.BackgroundTransparency = 1
+_TextLabel.Text = v23
+_TextLabel.TextSize = 11
+_TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+_TextLabel.TextStrokeTransparency = 0.6
+_TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+_TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+
+-- 按钮容器（使用 Frame 承载 UIListLayout，使其精准靠右排列，不影响左侧文字）
+local _ButtonContainer = Instance.new('Frame', _MainFrame)
+_ButtonContainer.Name = 'ButtonContainer'
+_ButtonContainer.Size = UDim2.new(0, 195, 1, 0)
+_ButtonContainer.Position = UDim2.new(1, -200, 0, 0)
+_ButtonContainer.BackgroundTransparency = 1
+
+local _UIListLayout = Instance.new('UIListLayout', _ButtonContainer)
 _UIListLayout.FillDirection = Enum.FillDirection.Horizontal
-_UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+_UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 _UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 _UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-_UIListLayout.Padding = UDim.new(0, 4)
+_UIListLayout.Padding = UDim.new(0, 5)
 
 -- ==================== 手机端全局拖拽支持 (Draggable) ====================
 local dragging, dragInput, dragStart, startPos
@@ -91,7 +112,7 @@ _UserInputService.InputChanged:Connect(function(input)
 end)
 
 local function createButton(name, layoutOrder, iconId)
-    local btn = Instance.new('TextButton', _MainFrame)
+    local btn = Instance.new('TextButton', _ButtonContainer)
     btn.Name = name
     btn.Size = UDim2.new(0, 34, 0, 34)
     btn.Text = ''
