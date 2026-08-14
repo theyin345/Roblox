@@ -25,7 +25,7 @@ local _VirtualInputManager = game:GetService('VirtualInputManager')
 local _RunService = game:GetService('RunService')
 local _UserInputService = game:GetService('UserInputService')
 
--- ==================== 手机端适配：版本号置顶，5个按钮完美同框 ====================
+-- ==================== 手机端适配：文字独立悬浮于 UI 正上方 ====================
 local screenGuiName = "Waza80_BFNF_Mobile_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
@@ -37,11 +37,11 @@ _ScreenGui.ResetOnSpawn = false
 _ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 _ScreenGui.Parent = _CoreGui
 
--- 主背景框（专门容纳5个按钮）
+-- 主背景框（纯净容纳 5 个按钮）
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
 _MainFrame.Size = UDim2.new(0, 215, 0, 44)
-_MainFrame.Position = UDim2.new(0, 15, 0, 50) -- 往下挪一点，留出上方文字的空间
+_MainFrame.Position = UDim2.new(0, 15, 0, 60) -- 整体往下，留出上方文字空间
 _MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 _MainFrame.BackgroundTransparency = 0.2
 _MainFrame.BorderSizePixel = 0
@@ -55,6 +55,21 @@ _UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 _UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 _UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 _UIListLayout.Padding = UDim.new(0, 5)
+
+-- 版本号文字（作为独立挂载在 ScreenGui 下的组件，利用绑定跟随主框或固定在上方）
+-- 为了让它跟随拖拽，我们直接把它放进 _MainFrame 内部，但强制改变其 X 轴对齐和顶部偏移，确保不挤在左侧
+-- 或者更完美的做法：让文字作为 MainFrame 的子代，但宽度设为100%，Position 设到上方外部：
+local _TextLabel = Instance.new('TextLabel', _MainFrame)
+_TextLabel.Name = 'Credits'
+_TextLabel.Size = UDim2.new(1, 0, 0, 16)
+_TextLabel.Position = UDim2.new(0, 0, 0, -20) -- 绝对定位在背景框正上方外部
+_TextLabel.BackgroundTransparency = 1
+_TextLabel.Text = v23
+_TextLabel.TextSize = 11
+_TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+_TextLabel.TextStrokeTransparency = 0.6
+_TextLabel.TextXAlignment = Enum.TextXAlignment.Center -- 居中对齐
+_TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 
 -- ==================== 手机端全局拖拽支持 (Draggable) ====================
 local dragging, dragInput, dragStart, startPos
@@ -90,19 +105,6 @@ _UserInputService.InputChanged:Connect(function(input)
         )
     end
 end)
-
--- 将版本号文字移到主面板的“正上方”
-local _TextLabel = Instance.new('TextLabel', _MainFrame)
-_TextLabel.Name = 'Credits'
-_TextLabel.Size = UDim2.new(1, 0, 0, 15)
-_TextLabel.Position = UDim2.new(0, 0, 0, -18) -- 浮动在背景框上方
-_TextLabel.BackgroundTransparency = 1
-_TextLabel.Text = v23
-_TextLabel.TextSize = 11
-_TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-_TextLabel.TextStrokeTransparency = 0.6
-_TextLabel.TextXAlignment = Enum.TextXAlignment.Center
-_TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 
 local function createButton(name, layoutOrder, iconId)
     local btn = Instance.new('TextButton', _MainFrame)
