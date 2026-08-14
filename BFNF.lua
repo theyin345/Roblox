@@ -176,7 +176,7 @@ until game:GetService('Players').LocalPlayer.PlayerGui.Main.Loading.Visible == f
 local _TPPart = workspace.Interactables.TPPart
 local _SongSelect = u62.PlayerGui.Main.SongSelect
 
--- ==================== 键位配置 ====================
+-- ==================== 键位与判定配置 ====================
 local Config = {
     KeyBinds = {
         [1] = Enum.KeyCode.A, 
@@ -184,6 +184,8 @@ local Config = {
         [3] = Enum.KeyCode.W, 
         [4] = Enum.KeyCode.D
     },
+    HitPixels = 15,   -- 缝合自 AutoPlayer_All_Perfection 的像素判定阈值
+    TapDuration = 0.05, -- 单击持续时间
 }
 
 task.spawn(function()
@@ -435,7 +437,7 @@ _TextButton5.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== 核心打谱与动态长按判定逻辑 ====================
+-- ==================== 核心缝合：像素绝对判定与长按/单点逻辑 ====================
 local FNFState = {
     ProcessedNotes = {},  
     ActiveKeys = {},      
@@ -469,6 +471,7 @@ local function getActiveKeySync()
     return matchFrame:FindFirstChild(playerSide)
 end
 
+-- 缝合核心：结合了像素差判定 (HitPixels) 的单点与长条综合处理函数
 local function processHit(arrowIdx, note, folder, receptor)
     if FNFState.ActiveKeys[arrowIdx] then return end 
     FNFState.ActiveKeys[arrowIdx] = true
@@ -510,7 +513,8 @@ local function processHit(arrowIdx, note, folder, receptor)
                 end
             end
         else
-            task.wait(0.035)
+            -- 采用 AutoPlayer_All_Perfection 的极简轻量点击持续时间
+            task.wait(Config.TapDuration)
         end
 
         _VirtualInputManager:SendKeyEvent(false, key, false, game)
@@ -520,7 +524,7 @@ end
 
 local function engageAutoPlayer()
     if FNFState.MainLoop then FNFState.MainLoop:Disconnect() end
-    releaseAllKeys()
+    releaseAllKey() -- 顺手防呆处理
     
     FNFState.MainLoop = _RunService.Heartbeat:Connect(function()
         if not getgenv().PlayEnabled then return end
@@ -537,13 +541,13 @@ local function engageAutoPlayer()
                 local targetY = receptor.AbsolutePosition.Y
                 
                 for _, note in ipairs(notes:GetChildren()) do
-                    if FNFState.ProcessedNotes[note] or not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or string.find(string.lower(note.Name), "hold") then 
+                    -- 过滤非物件、不可见、箭头本身或长条本体，防止对长条进行多余的单点触发
+                    if not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or string.find(string.lower(note.Name), "hold") or FNFState.ProcessedNotes[note] then 
                         continue 
                     end
                     
-                    local noteY = note.AbsolutePosition.Y
-                    
-                    if noteY <= targetY then
+                    -- 缝合核心：引入数学绝对像素误差 (HitPixels) 判定，完美对齐完美版本判定
+                    if math.abs(note.AbsolutePosition.Y - targetY) <= Config.HitPixels then
                         FNFState.ProcessedNotes[note] = true 
                         
                         processHit(i, note, folder, receptor)
