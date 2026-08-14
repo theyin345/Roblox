@@ -176,7 +176,7 @@ until game:GetService('Players').LocalPlayer.PlayerGui.Main.Loading.Visible == f
 local _TPPart = workspace.Interactables.TPPart
 local _SongSelect = u62.PlayerGui.Main.SongSelect
 
--- ==================== 键位与判定配置 ====================
+-- ==================== 键位配置 ====================
 local Config = {
     KeyBinds = {
         [1] = Enum.KeyCode.A, 
@@ -184,8 +184,7 @@ local Config = {
         [3] = Enum.KeyCode.W, 
         [4] = Enum.KeyCode.D
     },
-    HitPixels = 15,   -- 缝合自 AutoPlayer_All_Perfection 的像素判定阈值
-    TapDuration = 0.05, -- 单击持续时间
+    TapDuration = 0.05,
 }
 
 task.spawn(function()
@@ -437,7 +436,7 @@ _TextButton5.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== 核心缝合：像素绝对判定与长按/单点逻辑 ====================
+-- ==================== 核心打谱与防卡死长按/单点判定逻辑 ====================
 local FNFState = {
     ProcessedNotes = {},  
     ActiveKeys = {},      
@@ -447,7 +446,9 @@ local FNFState = {
 local function releaseAllKeys()
     for arrowIdx, isPressed in pairs(FNFState.ActiveKeys) do
         if isPressed then
-            _VirtualInputManager:SendKeyEvent(false, Config.KeyBinds[arrowIdx], false, game)
+            pcall(function()
+                _VirtualInputManager:SendKeyEvent(false, Config.KeyBinds[arrowIdx], false, game)
+            end)
             FNFState.ActiveKeys[arrowIdx] = false
         end
     end
@@ -471,7 +472,7 @@ local function getActiveKeySync()
     return matchFrame:FindFirstChild(playerSide)
 end
 
--- 缝合核心：结合了像素差判定 (HitPixels) 的单点与长条综合处理函数
+-- 具备双重保险和 1.5 秒超时强解的点击处理函数
 local function processHit(arrowIdx, note, folder, receptor)
     if FNFState.ActiveKeys[arrowIdx] then return end 
     FNFState.ActiveKeys[arrowIdx] = true
@@ -479,7 +480,10 @@ local function processHit(arrowIdx, note, folder, receptor)
     task.spawn(function()
         local key = Config.KeyBinds[arrowIdx]
         
-        _VirtualInputManager:SendKeyEvent(true, key, false, game)
+        -- 发送按下指令
+        pcall(function()
+            _VirtualInputManager:SendKeyEvent(true, key, false, game)
+        end)
         
         local notesFolder = folder:FindFirstChild("Notes")
         local activeHold = nil
@@ -498,7 +502,7 @@ local function processHit(arrowIdx, note, folder, receptor)
         end
         
         if activeHold and receptor then
-            local maxSafetyTimeout = tick() + 15 
+            local maxSafetyTimeout = tick() + 1.5 -- 缩短至 1.5 秒硬性切断，防止残留死锁卡死
             while activeHold and activeHold.Parent and activeHold.Visible do
                 _RunService.Heartbeat:Wait()
                 if tick() > maxSafetyTimeout then break end
@@ -513,18 +517,22 @@ local function processHit(arrowIdx, note, folder, receptor)
                 end
             end
         else
-            -- 采用 AutoPlayer_All_Perfection 的极简轻量点击持续时间
             task.wait(Config.TapDuration)
         end
 
-        _VirtualInputManager:SendKeyEvent(false, key, false, game)
+        -- 强制发送松开指令（无论中间是否发生意外都会执行）
+        pcall(function()
+            _VirtualInputManager:SendKeyEvent(false, key, false, game)
+        end)
+        
+        task.wait(0.02)
         FNFState.ActiveKeys[arrowIdx] = false
     end)
 end
 
 local function engageAutoPlayer()
     if FNFState.MainLoop then FNFState.MainLoop:Disconnect() end
-    releaseAllKey() -- 顺手防呆处理
+    releaseAllKeys()
     
     FNFState.MainLoop = _RunService.Heartbeat:Connect(function()
         if not getgenv().PlayEnabled then return end
@@ -541,13 +549,14 @@ local function engageAutoPlayer()
                 local targetY = receptor.AbsolutePosition.Y
                 
                 for _, note in ipairs(notes:GetChildren()) do
-                    -- 过滤非物件、不可见、箭头本身或长条本体，防止对长条进行多余的单点触发
-                    if not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or string.find(string.lower(note.Name), "hold") or FNFState.ProcessedNotes[note] then 
+                    if FNFState.ProcessedNotes[note] or not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or string.find(string.lower(note.Name), "hold") then 
                         continue 
                     end
                     
-                    -- 缝合核心：引入数学绝对像素误差 (HitPixels) 判定，完美对齐完美版本判定
-                    if math.abs(note.AbsolutePosition.Y - targetY) <= Config.HitPixels then
+                    local noteY = note.AbsolutePosition.Y
+                    
+                    -- 直接采用最原始的 <= 判定，不使用 HitPixels 误差阈值
+                    if noteY <= targetY then
                         FNFState.ProcessedNotes[note] = true 
                         
                         processHit(i, note, folder, receptor)
