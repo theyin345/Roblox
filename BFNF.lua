@@ -25,7 +25,7 @@ local _VirtualInputManager = game:GetService('VirtualInputManager')
 local _RunService = game:GetService('RunService')
 local _UserInputService = game:GetService('UserInputService')
 
--- ==================== 手机端适配：长背景框容纳左侧文字与右侧五个按钮 ====================
+-- ==================== 手机端适配：绝对定位完美包裹文字与五个按钮 ====================
 local screenGuiName = "Waza80_BFNF_Mobile_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
@@ -37,7 +37,7 @@ _ScreenGui.ResetOnSpawn = false
 _ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 _ScreenGui.Parent = _CoreGui
 
--- 主背景框（加长宽度以完美包裹文字和按钮）
+-- 主背景框（加长宽度至 310，完美容纳左侧文字与右侧 5 个按钮）
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
 _MainFrame.Size = UDim2.new(0, 310, 0, 44)
@@ -49,11 +49,11 @@ _MainFrame.BorderSizePixel = 0
 local _UICorner = Instance.new('UICorner', _MainFrame)
 _UICorner.CornerRadius = UDim.new(0, 8)
 
--- 版本号文字（固定在主背景框左侧内部）
+-- 版本号文字（直接挂在 MainFrame 左侧）
 local _TextLabel = Instance.new('TextLabel', _MainFrame)
 _TextLabel.Name = 'Credits'
-_TextLabel.Size = UDim2.new(0, 95, 1, 0)
-_TextLabel.Position = UDim2.new(0, 8, 0, 0)
+_TextLabel.Size = UDim2.new(0, 100, 1, 0)
+_TextLabel.Position = UDim2.new(0, 10, 0, 0)
 _TextLabel.BackgroundTransparency = 1
 _TextLabel.Text = v23
 _TextLabel.TextSize = 11
@@ -61,20 +61,6 @@ _TextLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 _TextLabel.TextStrokeTransparency = 0.6
 _TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 _TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-
--- 按钮容器（使用 Frame 承载 UIListLayout，使其精准靠右排列，不影响左侧文字）
-local _ButtonContainer = Instance.new('Frame', _MainFrame)
-_ButtonContainer.Name = 'ButtonContainer'
-_ButtonContainer.Size = UDim2.new(0, 195, 1, 0)
-_ButtonContainer.Position = UDim2.new(1, -200, 0, 0)
-_ButtonContainer.BackgroundTransparency = 1
-
-local _UIListLayout = Instance.new('UIListLayout', _ButtonContainer)
-_UIListLayout.FillDirection = Enum.FillDirection.Horizontal
-_UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-_UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-_UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-_UIListLayout.Padding = UDim.new(0, 5)
 
 -- ==================== 手机端全局拖拽支持 (Draggable) ====================
 local dragging, dragInput, dragStart, startPos
@@ -111,12 +97,13 @@ _UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
-local function createButton(name, layoutOrder, iconId)
-    local btn = Instance.new('TextButton', _ButtonContainer)
+-- 采用绝对 X 坐标偏移创建按钮，确保不依赖布局插件，稳稳排在右侧
+local function createButton(name, xOffset, iconId)
+    local btn = Instance.new('TextButton', _MainFrame)
     btn.Name = name
     btn.Size = UDim2.new(0, 34, 0, 34)
+    btn.Position = UDim2.new(0, xOffset, 0, 5)
     btn.Text = ''
-    btn.LayoutOrder = layoutOrder
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     btn.BorderSizePixel = 0
     
@@ -137,11 +124,12 @@ local function createButton(name, layoutOrder, iconId)
     return btn, icon
 end
 
-local _TextButton, _ImageLabel = createButton('AutoPlayButton', 1, 'rbxassetid://13882953872')
-local _TextButton2, _ImageLabel3 = createButton('AutoFarmButton', 2, 'rbxassetid://13902591674')
-local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 3, 'rbxassetid://13903165323')
-local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 4, 'rbxassetid://13945246221')
-local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 5, 'rbxassetid://13903165548')
+-- 从左到右依次排列 5 个按钮（起始 X 坐标从 115 开始，间距 38）
+local _TextButton, _ImageLabel = createButton('AutoPlayButton', 115, 'rbxassetid://13882953872')
+local _TextButton2, _ImageLabel3 = createButton('AutoFarmButton', 153, 'rbxassetid://13902591674')
+local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 191, 'rbxassetid://13903165323')
+local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 229, 'rbxassetid://13945246221')
+local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 267, 'rbxassetid://13903165548')
 
 local u66 = _HttpService:GenerateGUID(false)
 _TextButton.ID.Value = u66
