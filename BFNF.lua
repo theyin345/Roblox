@@ -123,11 +123,11 @@ local function createButton(name, xOffset, iconId)
     return btn, icon
 end
 
-local _TextButton, _ImageLabel = createButton('AutoPlayButton', 115, 'rbxassetid://13882953872')
-local _TextButton2, _ImageLabel3 = createButton('AutoFarmButton', 153, 'rbxassetid://13902591674')
-local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 191, 'rbxassetid://13903165323')
-local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 229, 'rbxassetid://13945246221')
-local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 267, 'rbxassetid://13903165548')
+local _TextButton, _ImageLabel = createButton('AutoPlayButton', 135, 'rbxassetid://13882953872')
+local _TextButton2, _ImageLabel3 = createButton('AutoFarmButton', 173, 'rbxassetid://13902591674')
+local _TextButton3, _ImageLabel5 = createButton('RespawnButton', 211, 'rbxassetid://13903165323')
+local _TextButton4, _ImageLabel7 = createButton('TeleportButton', 249, 'rbxassetid://13945246221')
+local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 287, 'rbxassetid://13903165548')
 
 local u66 = _HttpService:GenerateGUID(false)
 _TextButton.ID.Value = u66
