@@ -1,5 +1,5 @@
 if game.PlaceId ~= 6520999642 then
-    return warn('Please join "Basically FNF: Remix" to use this script!')
+    return warn('请先加入 "Basically FNF: Remix" 后再使用脚本!')
 end
 
 getgenv().PlayEnabled = getgenv().PlayEnabled or false
@@ -16,7 +16,7 @@ local u10, u11, u12, u13, u14, u15, u16, u17, u18, u19 = false, false, false, fa
 local u20 = Color3.fromRGB(225, 225, 0)
 local u21 = Color3.fromRGB(255, 255, 255)
 local _LocalPlayer = game.Players.LocalPlayer
-local v23 = 'v1.0.5 - By waza80'
+local v23 = 'v1.0.5 - By waza80 & 九夏云深'
 local _CoreGui = game:GetService('CoreGui')
 local _HttpService = game:GetService('HttpService')
 local _TweenService = game:GetService('TweenService')
@@ -25,7 +25,7 @@ local _VirtualInputManager = game:GetService('VirtualInputManager')
 local _RunService = game:GetService('RunService')
 local _UserInputService = game:GetService('UserInputService')
 
--- ==================== 手机端适配：绝对定位完美包裹文字与五个按钮 ====================
+-- 手机端适配
 local screenGuiName = "Waza80_BFNF_Mobile_UI"
 if _CoreGui:FindFirstChild(screenGuiName) then
     _CoreGui[screenGuiName]:Destroy()
@@ -37,10 +37,10 @@ _ScreenGui.ResetOnSpawn = false
 _ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 _ScreenGui.Parent = _CoreGui
 
--- 主背景框（加长宽度至 310，完美容纳左侧文字与右侧 5 个按钮）
+-- 主背景框
 local _MainFrame = Instance.new('Frame', _ScreenGui)
 _MainFrame.Name = 'MainFrame'
-_MainFrame.Size = UDim2.new(0, 310, 0, 44)
+_MainFrame.Size = UDim2.new(0, 330, 0, 44)
 _MainFrame.Position = UDim2.new(0, 15, 0, 30)
 _MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 _MainFrame.BackgroundTransparency = 0.2
@@ -49,7 +49,7 @@ _MainFrame.BorderSizePixel = 0
 local _UICorner = Instance.new('UICorner', _MainFrame)
 _UICorner.CornerRadius = UDim.new(0, 8)
 
--- 版本号文字（直接挂在 MainFrame 左侧）
+-- 文字
 local _TextLabel = Instance.new('TextLabel', _MainFrame)
 _TextLabel.Name = 'Credits'
 _TextLabel.Size = UDim2.new(0, 100, 1, 0)
@@ -62,7 +62,7 @@ _TextLabel.TextStrokeTransparency = 0.6
 _TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 _TextLabel.FontFace = Font.new('rbxasset://fonts/families/FredokaOne.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
 
--- ==================== 手机端全局拖拽支持 (Draggable) ====================
+-- 手机端全局拖拽支持
 local dragging, dragInput, dragStart, startPos
 
 _MainFrame.InputBegan:Connect(function(input)
@@ -132,7 +132,7 @@ local _TextButton5, _ImageLabel9 = createButton('DeleteButton', 267, 'rbxassetid
 local u66 = _HttpService:GenerateGUID(false)
 _TextButton.ID.Value = u66
 
--- ==================== 基础辅助函数 ====================
+--  基础辅助函数 
 function GetClosestP2()
     local _huge = math.huge
     local v51, v52, v53 = pairs(workspace.PersonalStages:GetChildren())
@@ -174,7 +174,7 @@ until game:GetService('Players').LocalPlayer.PlayerGui.Main.Loading.Visible == f
 local _TPPart = workspace.Interactables.TPPart
 local _SongSelect = u62.PlayerGui.Main.SongSelect
 
--- ==================== 键位配置 ====================
+-- 键位配置 
 local Config = {
     KeyBinds = {
         [1] = Enum.KeyCode.A, 
@@ -206,7 +206,7 @@ else
     _ImageLabel3.ImageColor3 = u20
 end
 
--- ==================== 按钮交互逻辑 ====================
+-- 按钮交互逻辑 
 _TextButton.MouseEnter:Connect(function()
     _TweenService:Create(_ImageLabel, TweenInfo.new(0.25, Enum.EasingStyle.Cubic), { Size = UDim2.new(0, 22, 0, 22) }):Play()
     u10 = true
@@ -234,7 +234,7 @@ _TextButton.MouseButton1Down:Connect(function()
             u15 = true
             if not u6 then
                 u6 = true
-                u1:Info('AutoPlay', 'Allows you to automatically play notes!', nil, nil, true)
+                u1:Info('自动点击', '可以让你自动点击!', nil, nil, true)
                 u6 = false
             end
             u15 = false
@@ -261,7 +261,7 @@ _TextButton.MouseButton1Click:Connect(function()
             end
         elseif not u6 then
             u6 = true
-            local Result = u1:Prompt("You can't disable AutoPlay because AutoFarm is enabled.\nDisable AutoFarm?")
+            local Result = u1:Prompt("你无法关闭自动点击，因为已启用自动挂机.\n是否关闭自动挂机?")
             u6 = false
             if Result == true then
                 getgenv().FarmEnabled = false
@@ -304,7 +304,7 @@ _TextButton2.MouseButton1Down:Connect(function()
             u16 = true
             if not u6 then
                 u6 = true
-                u1:Info('AutoFarm', '[BETA]\nAutomatically play songs!\nForcefully enables AutoPlay.', nil, nil, true)
+                u1:Info('自动挂机', '[BETA]\n自动单人刷歌!\n强制开启自动打歌.', nil, nil, true)
                 u6 = false
             end
             u16 = false
@@ -363,7 +363,7 @@ _TextButton3.MouseButton1Down:Connect(function()
             u17 = true
             if not u6 then
                 u6 = true
-                u1:Info('Respawn', 'Kills your character!\nUseful in games.', nil, nil, true)
+                u1:Info('重生', '重生你的人物!\n在游戏里很有用.', nil, nil, true)
                 u6 = false
             end
             u17 = false
@@ -395,7 +395,7 @@ _TextButton4.MouseButton1Click:Connect(function()
     if not u18 then
         if not u6 then
             u6 = true
-            local NotificationResult = u1:Prompt('What would you like to do?', 'Rejoin', 'Serverhop')
+            local NotificationResult = u1:Prompt('你想要做什么?', '重新加入', '换新服务器')
             u6 = false
             if NotificationResult == false then
                 u2()
@@ -421,7 +421,7 @@ _TextButton5.MouseButton1Click:Connect(function()
     if not u19 then
         if not u6 then
             u6 = true
-            local Result = u1:Prompt('Are you sure you want to delete the UI?')
+            local Result = u1:Prompt('你想要关闭UI吗?')
             u6 = false
             if Result == true then
                 _ScreenGui:Destroy()
@@ -434,7 +434,7 @@ _TextButton5.MouseButton1Click:Connect(function()
     end
 end)
 
--- ==================== 核心打谱：保留原版长条逻辑 + 抓包直连 Remote ====================
+-- 核心打谱
 local FNFState = {
     ProcessedNotes = {},  
     ActiveKeys = {},      
@@ -471,7 +471,7 @@ local function getActiveKeySync()
     return matchFrame:FindFirstChild(playerSide)
 end
 
--- 结合长条原版判定和抓包直连的点击函数
+-- 点击函数
 local function processHit(arrowIdx, note, folder, receptor)
     if FNFState.ActiveKeys[arrowIdx] then return end 
     FNFState.ActiveKeys[arrowIdx] = true
@@ -479,7 +479,6 @@ local function processHit(arrowIdx, note, folder, receptor)
     task.spawn(function()
         local key = Config.KeyBinds[arrowIdx]
         
-        -- 1. 触发抓包的 Remote 发包
         pcall(function()
             NotesRemote:FireServer(
                 {
@@ -491,7 +490,6 @@ local function processHit(arrowIdx, note, folder, receptor)
             )
         end)
         
-        -- 2. 模拟键盘按下以维持视觉高亮
         pcall(function()
             _VirtualInputManager:SendKeyEvent(true, key, false, game)
         end)
@@ -512,9 +510,8 @@ local function processHit(arrowIdx, note, folder, receptor)
             end
         end
         
-        -- 3. 完整保留原版长条判断循环逻辑
         if activeHold and receptor then
-            local maxSafetyTimeout = tick() + 15 -- 维持原版的 15 秒保险
+            local maxSafetyTimeout = tick() + 15 
             while activeHold and activeHold.Parent and activeHold.Visible do
                 _RunService.Heartbeat:Wait()
                 if tick() > maxSafetyTimeout then break end
@@ -532,7 +529,6 @@ local function processHit(arrowIdx, note, folder, receptor)
             task.wait(Config.TapDuration)
         end
 
-        -- 4. 释放键盘按键
         pcall(function()
             _VirtualInputManager:SendKeyEvent(false, key, false, game)
         end)
@@ -602,13 +598,13 @@ end)
 
 if v5 == true then
     task.spawn(function()
-        u1:Notify('Click the play button in the panel to toggle Auto Play!', 'Okay', nil, true)
-        u1:Notify('Hold a button to see its description!', 'Okay', nil, true)
+        u1:Notify('点击面板上的播放按钮即可切换自动打歌!', '好的', nil, true)
+        u1:Notify('按住按钮即可查看其描述!', '好的', nil, true)
         writefile('BFNF-Waza80-ST', '')
     end)
 end
 
--- ==================== 自动挂机 (AutoFarm) 核心循环 ====================
+-- 自动挂机 
 task.spawn(function()
     while task.wait() and _ScreenGui.Parent do
         if getgenv().FarmEnabled == true and u62:FindFirstChild('CurrentMatch') == nil then
