@@ -6,7 +6,7 @@ local v3 = game:GetService("TweenService");
 local v4 = {
     KeyBinds = {[1] = Enum.KeyCode.A, [2] = Enum.KeyCode.S, [3] = Enum.KeyCode.W, [4] = Enum.KeyCode.D},
     HitPixels = 15, 
-    TapDuration = 0.02, -- 缩短单点判定时间
+    TapDuration = 0.03, -- 单点瞬时释放延迟
 };
 
 local v5 = v2.LocalPlayer;
@@ -17,7 +17,7 @@ local mainLoop = nil;
 
 -- GUI SETUP
 local v9 = Instance.new("ScreenGui", v5:WaitForChild("PlayerGui"));
-v9.Name = "AutoPlayer_Orbit_V4";
+v9.Name = "AutoPlayer_Orbit_V5";
 v9.ResetOnSpawn = false;
 
 local v15 = Instance.new("Frame", v9);
@@ -38,7 +38,7 @@ local Title = Instance.new("TextLabel", TopBar);
 Title.Size = UDim2.new(1, -70, 1, 0);
 Title.Position = UDim2.new(0, 10, 0, 0);
 Title.BackgroundTransparency = 1;
-Title.Text = "AutoPlayer (Orbit Fix)";
+Title.Text = "AutoPlayer (Stable)";
 Title.TextColor3 = Color3.new(1, 1, 1);
 Title.Font = Enum.Font.GothamBold;
 Title.TextSize = 14;
@@ -101,16 +101,16 @@ local function startLoop()
                     
                     local distance = note.AbsolutePosition.Y - targetY
                     
-                    -- 当音符头部到达判定线附近时触发
                     if math.abs(distance) <= v4.HitPixels then
                         v6[note] = true 
                         
+                        -- 检测长条组件（检查是否有 Tail、HoldBody 或高度明显大于普通单点）
                         local tail = note:FindFirstChild("Tail") or note:FindFirstChild("HoldBody") or note:FindFirstChild("LongNote")
-                        local isHold = tail ~= nil or (note.AbsoluteSize.Y > 50)
+                        local isHold = tail ~= nil or (note.AbsoluteSize.Y > 45)
                         local key = v4.KeyBinds[i]
                         
                         if not isHold then
-                            -- 【单点优化】瞬时点下并利用协程极速抬起，绝不拖泥带水
+                            -- 【单点打击】瞬时按下并在极短时间后松开
                             task.spawn(function()
                                 v1:SendKeyEvent(true, key, false, game)
                                 task.wait(v4.TapDuration)
@@ -118,21 +118,15 @@ local function startLoop()
                             end)
                             note.AncestryChanged:Once(function() v6[note] = nil end)
                         else
-                            -- 【长条完美按到底】动态追踪逻辑：只要长条还在屏幕里且未走完，就持续按住
+                            -- 【长条稳定打击】根据长条的实际像素高度计算精准按压时间
+                            -- 提取长条总长度（优先取 Tail 高度，其次取整体高度减去偏移）
+                            local bodySize = tail and tail.AbsoluteSize.Y or note.AbsoluteSize.Y
+                            -- 速度换算系数：可根据游戏下落速度微调分母（当前 180~200 适配常规下落速度）
+                            local holdDuration = math.max(0.1, bodySize / 190)
+                            
                             task.spawn(function()
                                 v1:SendKeyEvent(true, key, false, game)
-                                
-                                -- 实时循环监控长条尾部或整体对象的销毁/位移
-                                while note and note.Parent and note.Visible do
-                                    -- 计算长条底端（尾部）的位置
-                                    local noteBottomY = note.AbsolutePosition.Y + note.AbsoluteSize.Y
-                                    -- 当长条尾部通过判定线时跳出循环
-                                    if noteBottomY <= targetY + 5 then
-                                        break
-                                    end
-                                    v0.Heartbeat:Wait()
-                                end
-                                
+                                task.wait(holdDuration)
                                 v1:SendKeyEvent(false, key, false, game)
                                 v6[note] = nil
                             end)
