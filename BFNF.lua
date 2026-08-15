@@ -6,19 +6,18 @@ local v3 = game:GetService("TweenService");
 local v4 = {
     KeyBinds = {[1] = Enum.KeyCode.A, [2] = Enum.KeyCode.S, [3] = Enum.KeyCode.W, [4] = Enum.KeyCode.D},
     HitPixels = 15, 
-    TapDuration = 0.03, -- Orbit 标准单点延迟：约 0.03 秒[cite: 1]
+    TapDuration = 0.02, -- 缩短单点判定时间
 };
 
 local v5 = v2.LocalPlayer;
 local v6 = {}; 
-local v7 = {}; 
 local v8 = false;
 local v_minimized = false;
 local mainLoop = nil;
 
 -- GUI SETUP
 local v9 = Instance.new("ScreenGui", v5:WaitForChild("PlayerGui"));
-v9.Name = "AutoPlayer_Orbit_V3";
+v9.Name = "AutoPlayer_Orbit_V4";
 v9.ResetOnSpawn = false;
 
 local v15 = Instance.new("Frame", v9);
@@ -39,7 +38,7 @@ local Title = Instance.new("TextLabel", TopBar);
 Title.Size = UDim2.new(1, -70, 1, 0);
 Title.Position = UDim2.new(0, 10, 0, 0);
 Title.BackgroundTransparency = 1;
-Title.Text = "AutoPlayer (Orbit)";
+Title.Text = "AutoPlayer (Orbit Fix)";
 Title.TextColor3 = Color3.new(1, 1, 1);
 Title.Font = Enum.Font.GothamBold;
 Title.TextSize = 14;
@@ -72,26 +71,6 @@ v36.TextColor3 = Color3.new(1, 1, 1);
 v36.Font = Enum.Font.GothamBold;
 v36.TextSize = 22;
 
--- ORBIT CORE HIT ENGINE (修复单点误判与轨道锁死)
-local function handleNote(arrowIdx, isHold, holdDuration)
-    task.spawn(function()
-        local key = v4.KeyBinds[arrowIdx]
-        
-        -- 1. 模拟按下按键
-        v1:SendKeyEvent(true, key, false, game)
-        
-        if not isHold or not holdDuration or holdDuration <= 0 then
-            -- 2A. 普通单点音符：严格执行极短延迟后松开[cite: 1]
-            task.wait(v4.TapDuration)
-            v1:SendKeyEvent(false, key, false, game)
-        else
-            -- 2B. 长条音符（Hold）：保持按住直到结束[cite: 1]
-            task.wait(holdDuration)
-            v1:SendKeyEvent(false, key, false, game)
-        end
-    end)
-end
-
 local function getMyKeySync()
     local Match = v5.PlayerGui:FindFirstChild("Main") and v5.PlayerGui.Main:FindFirstChild("MatchFrame")
     if not (Match and Match.Visible) then return nil end
@@ -120,21 +99,44 @@ local function startLoop()
                 for _, note in pairs(notes:GetChildren()) do
                     if not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or v6[note] then continue end
                     
-                    if math.abs(note.AbsolutePosition.Y - targetY) <= v4.HitPixels then
+                    local distance = note.AbsolutePosition.Y - targetY
+                    
+                    -- 当音符头部到达判定线附近时触发
+                    if math.abs(distance) <= v4.HitPixels then
                         v6[note] = true 
                         
-                        -- 更严谨的长条判定：必须有子对象 Tail/HoldBody 或者高度显著大于普通单点
                         local tail = note:FindFirstChild("Tail") or note:FindFirstChild("HoldBody") or note:FindFirstChild("LongNote")
                         local isHold = tail ~= nil or (note.AbsoluteSize.Y > 50)
-                        local holdDuration = 0
+                        local key = v4.KeyBinds[i]
                         
-                        if isHold then
-                            local bodySize = tail and tail.AbsoluteSize.Y or note.AbsoluteSize.Y
-                            holdDuration = bodySize / 200 
+                        if not isHold then
+                            -- 【单点优化】瞬时点下并利用协程极速抬起，绝不拖泥带水
+                            task.spawn(function()
+                                v1:SendKeyEvent(true, key, false, game)
+                                task.wait(v4.TapDuration)
+                                v1:SendKeyEvent(false, key, false, game)
+                            end)
+                            note.AncestryChanged:Once(function() v6[note] = nil end)
+                        else
+                            -- 【长条完美按到底】动态追踪逻辑：只要长条还在屏幕里且未走完，就持续按住
+                            task.spawn(function()
+                                v1:SendKeyEvent(true, key, false, game)
+                                
+                                -- 实时循环监控长条尾部或整体对象的销毁/位移
+                                while note and note.Parent and note.Visible do
+                                    -- 计算长条底端（尾部）的位置
+                                    local noteBottomY = note.AbsolutePosition.Y + note.AbsoluteSize.Y
+                                    -- 当长条尾部通过判定线时跳出循环
+                                    if noteBottomY <= targetY + 5 then
+                                        break
+                                    end
+                                    v0.Heartbeat:Wait()
+                                end
+                                
+                                v1:SendKeyEvent(false, key, false, game)
+                                v6[note] = nil
+                            end)
                         end
-                        
-                        handleNote(i, isHold, holdDuration)
-                        note.AncestryChanged:Once(function() v6[note] = nil end)
                     end
                 end
             end
