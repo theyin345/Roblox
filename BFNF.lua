@@ -6,7 +6,7 @@ local v3 = game:GetService("TweenService");
 local v4 = {
     KeyBinds = {[1] = Enum.KeyCode.A, [2] = Enum.KeyCode.S, [3] = Enum.KeyCode.W, [4] = Enum.KeyCode.D},
     HitPixels = 15, 
-    TapDuration = 0.03, -- 单点瞬时释放延迟
+    TapDuration = 0.02, -- 单点瞬时点按时间
 };
 
 local v5 = v2.LocalPlayer;
@@ -17,7 +17,7 @@ local mainLoop = nil;
 
 -- GUI SETUP
 local v9 = Instance.new("ScreenGui", v5:WaitForChild("PlayerGui"));
-v9.Name = "AutoPlayer_Orbit_V5";
+v9.Name = "AutoPlayer_Orbit_V6";
 v9.ResetOnSpawn = false;
 
 local v15 = Instance.new("Frame", v9);
@@ -38,7 +38,7 @@ local Title = Instance.new("TextLabel", TopBar);
 Title.Size = UDim2.new(1, -70, 1, 0);
 Title.Position = UDim2.new(0, 10, 0, 0);
 Title.BackgroundTransparency = 1;
-Title.Text = "AutoPlayer (Stable)";
+Title.Text = "AutoPlayer (Final Fix)";
 Title.TextColor3 = Color3.new(1, 1, 1);
 Title.Font = Enum.Font.GothamBold;
 Title.TextSize = 14;
@@ -104,13 +104,13 @@ local function startLoop()
                     if math.abs(distance) <= v4.HitPixels then
                         v6[note] = true 
                         
-                        -- 检测长条组件（检查是否有 Tail、HoldBody 或高度明显大于普通单点）
+                        -- 严格长条判定
                         local tail = note:FindFirstChild("Tail") or note:FindFirstChild("HoldBody") or note:FindFirstChild("LongNote")
                         local isHold = tail ~= nil or (note.AbsoluteSize.Y > 45)
                         local key = v4.KeyBinds[i]
                         
                         if not isHold then
-                            -- 【单点打击】瞬时按下并在极短时间后松开
+                            -- 【单点打击】瞬时按下并快速松开
                             task.spawn(function()
                                 v1:SendKeyEvent(true, key, false, game)
                                 task.wait(v4.TapDuration)
@@ -118,15 +118,33 @@ local function startLoop()
                             end)
                             note.AncestryChanged:Once(function() v6[note] = nil end)
                         else
-                            -- 【长条稳定打击】根据长条的实际像素高度计算精准按压时间
-                            -- 提取长条总长度（优先取 Tail 高度，其次取整体高度减去偏移）
-                            local bodySize = tail and tail.AbsoluteSize.Y or note.AbsoluteSize.Y
-                            -- 速度换算系数：可根据游戏下落速度微调分母（当前 180~200 适配常规下落速度）
-                            local holdDuration = math.max(0.1, bodySize / 190)
-                            
+                            -- 【长条稳妥打击】通过监测长条对象的生命周期（AncestryChanged / 销毁）来精确维持按住状态
+                            -- 只要长条还在画面中（Parent没变、没有被销毁），就死死按住；一旦长条被游戏判定吃掉并销毁，立刻松开。
                             task.spawn(function()
                                 v1:SendKeyEvent(true, key, false, game)
-                                task.wait(holdDuration)
+                                
+                                local held = true
+                                local connection
+                                
+                                -- 监听音符被销毁或从父级移除的瞬间
+                                connection = note.AncestryChanged:Connect(function(_, parent)
+                                    if not parent then
+                                        held = false
+                                        if connection then connection:Disconnect() end
+                                    end
+                                end)
+                                
+                                -- 设定一个最大安全超时（比如 10 秒），防止极端情况下死循环卡键
+                                local startTime = tick()
+                                while held and v8 and (tick() - startTime < 10) do
+                                    -- 如果音符不可见或父级失效，也视为结束
+                                    if not note.Parent or not note.Visible then
+                                        break
+                                    end
+                                    v0.Heartbeat:Wait()
+                                end
+                                
+                                if connection then connection:Disconnect() end
                                 v1:SendKeyEvent(false, key, false, game)
                                 v6[note] = nil
                             end)
