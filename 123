@@ -1,249 +1,94 @@
--- ts file was generated at discord.gg/25ms[cite: 1]
-
-local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-
-local LocalPlayer = Players.LocalPlayer
-
--- [ 核心配置 ] 
-local Config = {
-    KeyBinds = {
-        [1] = Enum.KeyCode.A, 
-        [2] = Enum.KeyCode.S, 
-        [3] = Enum.KeyCode.W, 
-        [4] = Enum.KeyCode.D
-    },
-    HitPixels = 40,       -- 黄金判定范围
+local getcontext = syn and syn.get_thread_identity or getthreadcontext
+local setcontext = syn and syn.set_thread_identity or setthreadcontext
+local material = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kinlei/MaterialLua/master/Module.lua"))()
+local wait = wait;
+local cowrap = coroutine.wrap;
+ 
+local del = 0.2
+ 
+local ui = material.Load({
+    Title = "fnf auto player | discord.gg/WuQE59cGAb",
+    Style = 1,
+    SizeX = 400,
+    SizeY = 400,
+    Theme = "Dark"
+})
+ 
+local main = ui.New({
+    Title = "Main"
+})
+ 
+local delspeed = main.Slider({
+    Text = "Del Speed (Divide By 100)",
+    Callback = function(value)
+        del = value / 100
+    end,
+    Min = 1,
+    Max = 100,
+    Def = 20
+})
+ 
+local vim = game:GetService("VirtualInputManager")
+local plr = game:GetService("Players").LocalPlayer
+local root = plr.Character.HumanoidRootPart
+ 
+local function getpos()
+    local parts = workspace.Stages:GetDescendants()
+    local nearest = nil;
+    local closest = 0;
+    
+    for i,v in pairs(parts) do
+        if v.Name:sub(1, 1) == "P" and v:IsA("BasePart") then
+            if closest < (root.Position - v.Position).Magnitude then
+                nearest = v
+                closest = (root.Position - v.Position).Magnitude
+            end
+        end
+    end
+    
+    return nearest.Name:gsub("%D+", "")
+end
+ 
+local keymap = {
+    ["U"] = Enum.KeyCode.W,
+    ["D"] = Enum.KeyCode.S,
+    ["L"] = Enum.KeyCode.A,
+    ["R"] = Enum.KeyCode.D
 }
-
--- [ 状态追踪 ]
-local State = {
-    Enabled = false,
-    Minimized = false,
-    ProcessedNotes = {},  -- 已处理的音符，防连击
-    ActiveKeys = {},      -- 正在按住的轨道，防死锁
-    MainLoop = nil
-}
-
---========================================
--- 1. GUI 界面构建
---========================================
-local GUI = Instance.new("ScreenGui")
-GUI.Name = "AutoPlayer_Ultimate"
-GUI.ResetOnSpawn = false
-GUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-local MainFrame = Instance.new("Frame", GUI)
-MainFrame.Size = UDim2.new(0, 200, 0, 120)
-MainFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.ClipsDescendants = true
-
-local UICorner = Instance.new("UICorner", MainFrame)
-UICorner.CornerRadius = UDim.new(0, 8)
-
-local TopBar = Instance.new("Frame", MainFrame)
-TopBar.Size = UDim2.new(1, 0, 0, 30)
-TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-TopBar.BorderSizePixel = 0
-
-local Title = Instance.new("TextLabel", TopBar)
-Title.Size = UDim2.new(1, -70, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "AutoPlayer Pro (Safe Fix)"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 12
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local CloseBtn = Instance.new("TextButton", TopBar)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -30, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.new(1, 1, 1)
-
-local MinBtn = Instance.new("TextButton", TopBar)
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Position = UDim2.new(1, -60, 0, 0)
-MinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-MinBtn.Text = "-"
-MinBtn.TextColor3 = Color3.new(1, 1, 1)
-
-local ToggleBtn = Instance.new("TextButton", MainFrame)
-ToggleBtn.Size = UDim2.new(0.85, 0, 0, 50)
-ToggleBtn.Position = UDim2.new(0.075, 0, 0.45, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleBtn.Text = "OFF"
-ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 22
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
-
---========================================
--- 2. 核心打谱逻辑（安全空值校验）
---========================================
-
-local function releaseAllKeys()
-    for arrowIdx, isPressed in pairs(State.ActiveKeys) do
-        if isPressed then
-            VirtualInputManager:SendKeyEvent(false, Config.KeyBinds[arrowIdx], false, game)
-            State.ActiveKeys[arrowIdx] = false
-        end
-    end
+ 
+local player = game:GetService("Players").LocalPlayer
+local gui = player.PlayerGui
+ 
+local function hit(key, await)
+    wait(2 / await - del)
+    vim:SendKeyEvent(true, keymap[key], false, game)
 end
-
-local function getActiveKeySync()
-    local mainGui = LocalPlayer.PlayerGui:FindFirstChild("Main")
-    if not mainGui then return nil end
-    
-    local matchFrame = mainGui:FindFirstChild("MatchFrame")
-    if not (matchFrame and matchFrame.Visible) then return nil end
-    
-    local playerSide = "KeySync1"
-    local file = LocalPlayer:FindFirstChild("File")
-    if file and file:FindFirstChild("CurrentPlayer") then
-        if file.CurrentPlayer.Value and file.CurrentPlayer.Value.Name == "Player2" then
-            playerSide = "KeySync2"
-        end
-    end
-    
-    -- 安全返回：如果没找到对应的 KeySync 则返回 nil，防止报错
-    return matchFrame:FindFirstChild(playerSide)
-end
-
-local function processHit(arrowIdx, note, folder, receptor)
-    if State.ActiveKeys[arrowIdx] then return end 
-    State.ActiveKeys[arrowIdx] = true
-    
-    task.spawn(function()
-        local key = Config.KeyBinds[arrowIdx]
-        
-        -- 1. 模拟按下按键
-        VirtualInputManager:SendKeyEvent(true, key, false, game)
-        
-        -- 2. 寻找对应的 Hold 尾巴
-        local notesFolder = folder:FindFirstChild("Notes")
-        local activeHold = nil
-        
-        if notesFolder then
-            activeHold = notesFolder:FindFirstChild("Hold_" .. tostring(note.Name))
-            if not activeHold then
-                for _, child in ipairs(notesFolder:GetChildren()) do
-                    if string.find(child.Name, "Hold") then
-                        activeHold = child
-                        break
-                    end
-                end
-            end
+ 
+gui.ChildAdded:Connect(function(ui)
+    if ui.Name == "FNFMode" then
+        local scr = ui:WaitForChild("FNFMain")
+        local succ, env = pcall(getsenv, scr)
+ 
+        if not succ then
+            wait(2)
+            succ, env = pcall(getsenv, scr)
         end
         
-        -- 3. 长条动态坐标追踪：用尾巴的底部位置对比判定线
-        if activeHold and receptor then
-            local maxSafetyTimeout = tick() + 15 
+        local orig = env.Note
+        local our = getpos();
+        
+        env.Note = function(key, opp, await)
+            local old = getcontext()
+            setcontext(7)
             
-            while activeHold and activeHold.Parent and activeHold.Visible do
-                RunService.Heartbeat:Wait()
-                if tick() > maxSafetyTimeout then break end
-                
-                local targetY = receptor.AbsolutePosition.Y
-                local holdY = activeHold.AbsolutePosition.Y
-                local holdHeight = activeHold.AbsoluteSize.Y
-                local holdBottomY = holdY + holdHeight
-                
-                -- 当长条尾巴底端触及判定线时立刻松手
-                if holdBottomY <= targetY + 10 or holdHeight < 5 then
-                    break
-                end
+            local turn = opp:gsub("%D+", "")
+            if tonumber(our) == tonumber(turn) then
+                cowrap(hit)(key, await)
             end
-        else
-            -- 普通短音符：极短延迟后立刻松开
-            task.wait(0.03)
-        end
-
-        -- 4. 完美松开按键
-        VirtualInputManager:SendKeyEvent(false, key, false, game)
-        State.ActiveKeys[arrowIdx] = false
-    end)
-end
-
--- 扫描主循环
-local function engageAutoPlayer()
-    if State.MainLoop then State.MainLoop:Disconnect() end
-    
-    State.MainLoop = RunService.Heartbeat:Connect(function()
-        if not State.Enabled then return end
-        
-        local KeySync = getActiveKeySync()
-        if not KeySync then return end -- 安全拦截，未进游戏或不在对局中时直接跳过
-        
-        for i = 1, 4 do
-            local folder = KeySync:FindFirstChild("Arrow" .. i)
-            local receptor = folder and folder:FindFirstChild("Arrow")
-            local notes = folder and folder:FindFirstChild("Notes")
             
-            if receptor and notes then
-                local targetY = receptor.AbsolutePosition.Y
-                
-                for _, note in ipairs(notes:GetChildren()) do
-                    if State.ProcessedNotes[note] or not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or string.find(note.Name, "Hold") then 
-                        continue 
-                    end
-                    
-                    local diff = note.AbsolutePosition.Y - targetY
-                    
-                    if math.abs(diff) <= Config.HitPixels then
-                        State.ProcessedNotes[note] = true 
-                        
-                        processHit(i, note, folder, receptor)
-                        
-                        note.AncestryChanged:Once(function() 
-                            State.ProcessedNotes[note] = nil 
-                        end)
-                        
-                        break 
-                    end
-                end
-            end
+            setcontext(old)
+            
+            return orig(key, opp, await)
         end
-    end)
-end
-
---========================================
--- 3. UI 交互事件
---========================================
-ToggleBtn.MouseButton1Click:Connect(function()
-    State.Enabled = not State.Enabled
-    
-    if State.Enabled then
-        ToggleBtn.Text = "ON"
-        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 150, 40)}):Play()
-        engageAutoPlayer()
-    else
-        ToggleBtn.Text = "OFF"
-        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
-        if State.MainLoop then State.MainLoop:Disconnect() end
-        releaseAllKeys()
     end
-end)
-
-MinBtn.MouseButton1Click:Connect(function()
-    State.Minimized = not State.Minimized
-    MinBtn.Text = State.Minimized and "+" or "-"
-    local targetSize = State.Minimized and UDim2.new(0, 200, 0, 30) or UDim2.new(0, 200, 0, 120)
-    MainFrame:TweenSize(targetSize, "Out", "Quad", 0.25, true)
-    ToggleBtn.Visible = not State.Minimized
-end)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    State.Enabled = false
-    if State.MainLoop then State.MainLoop:Disconnect() end
-    releaseAllKeys()
-    GUI:Destroy()
 end)
