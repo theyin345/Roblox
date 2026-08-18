@@ -1,4 +1,4 @@
--- ts file was generated at discord.gg/25ms
+-- ts file was generated at discord.gg/25ms[cite: 1]
 
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -56,7 +56,7 @@ local Title = Instance.new("TextLabel", TopBar)
 Title.Size = UDim2.new(1, -70, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "AutoPlayer Pro (Physical Hold Lock)"
+Title.Text = "AutoPlayer Pro (Safe Fix)"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 12
@@ -87,7 +87,7 @@ ToggleBtn.TextSize = 22
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
 --========================================
--- 2. 核心打谱逻辑（长条尾巴物理追踪法）
+-- 2. 核心打谱逻辑（安全空值校验）
 --========================================
 
 local function releaseAllKeys()
@@ -101,7 +101,9 @@ end
 
 local function getActiveKeySync()
     local mainGui = LocalPlayer.PlayerGui:FindFirstChild("Main")
-    local matchFrame = mainGui and mainGui:FindFirstChild("MatchFrame")
+    if not mainGui then return nil end
+    
+    local matchFrame = mainGui:FindFirstChild("MatchFrame")
     if not (matchFrame and matchFrame.Visible) then return nil end
     
     local playerSide = "KeySync1"
@@ -112,10 +114,11 @@ local function getActiveKeySync()
         end
     end
     
+    -- 安全返回：如果没找到对应的 KeySync 则返回 nil，防止报错
     return matchFrame:FindFirstChild(playerSide)
 end
 
-local function processHit(arrowIdx, note, folder)
+local function processHit(arrowIdx, note, folder, receptor)
     if State.ActiveKeys[arrowIdx] then return end 
     State.ActiveKeys[arrowIdx] = true
     
@@ -125,15 +128,12 @@ local function processHit(arrowIdx, note, folder)
         -- 1. 模拟按下按键
         VirtualInputManager:SendKeyEvent(true, key, false, game)
         
-        -- 2. 去 Notes 文件夹里寻找对应的 Hold 尾巴
+        -- 2. 寻找对应的 Hold 尾巴
         local notesFolder = folder:FindFirstChild("Notes")
         local activeHold = nil
         
         if notesFolder then
-            -- 优先精准匹配：根据你的描述，如果是音符 ID 关联，直接找 "Hold_对应名字"
             activeHold = notesFolder:FindFirstChild("Hold_" .. tostring(note.Name))
-            
-            -- 如果名字没对上，执行后备方案：找当前轨道里任意一个名字带 "Hold" 的物体
             if not activeHold then
                 for _, child in ipairs(notesFolder:GetChildren()) do
                     if string.find(child.Name, "Hold") then
@@ -144,14 +144,21 @@ local function processHit(arrowIdx, note, folder)
             end
         end
         
-        -- 3. 判断并执行长按逻辑
-        if activeHold then
-            -- 核心修复：彻底放弃时间计算，只要这个 Hold 尾巴还在游戏里没消失，就死死按住！
+        -- 3. 长条动态坐标追踪：用尾巴的底部位置对比判定线
+        if activeHold and receptor then
+            local maxSafetyTimeout = tick() + 15 
+            
             while activeHold and activeHold.Parent and activeHold.Visible do
                 RunService.Heartbeat:Wait()
+                if tick() > maxSafetyTimeout then break end
                 
-                -- 双重保险：如果长条快被吃完了，高度变得极小（小于5像素），说明该松手了
-                if activeHold.AbsoluteSize.Y < 5 then
+                local targetY = receptor.AbsolutePosition.Y
+                local holdY = activeHold.AbsolutePosition.Y
+                local holdHeight = activeHold.AbsoluteSize.Y
+                local holdBottomY = holdY + holdHeight
+                
+                -- 当长条尾巴底端触及判定线时立刻松手
+                if holdBottomY <= targetY + 10 or holdHeight < 5 then
                     break
                 end
             end
@@ -160,7 +167,7 @@ local function processHit(arrowIdx, note, folder)
             task.wait(0.03)
         end
 
-        -- 4. 长条彻底结束或短音符结束，松开按键
+        -- 4. 完美松开按键
         VirtualInputManager:SendKeyEvent(false, key, false, game)
         State.ActiveKeys[arrowIdx] = false
     end)
@@ -174,10 +181,9 @@ local function engageAutoPlayer()
         if not State.Enabled then return end
         
         local KeySync = getActiveKeySync()
-        if not KeySync then return end
+        if not KeySync then return end -- 安全拦截，未进游戏或不在对局中时直接跳过
         
         for i = 1, 4 do
-            -- 注意这里用的是正确的字符串拼接符号 `..`，不再会报错
             local folder = KeySync:FindFirstChild("Arrow" .. i)
             local receptor = folder and folder:FindFirstChild("Arrow")
             local notes = folder and folder:FindFirstChild("Notes")
@@ -195,8 +201,7 @@ local function engageAutoPlayer()
                     if math.abs(diff) <= Config.HitPixels then
                         State.ProcessedNotes[note] = true 
                         
-                        -- 把音符和它所在的 folder 传进去，以便直接查找尾巴
-                        processHit(i, note, folder)
+                        processHit(i, note, folder, receptor)
                         
                         note.AncestryChanged:Once(function() 
                             State.ProcessedNotes[note] = nil 
