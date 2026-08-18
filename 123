@@ -1,166 +1,244 @@
----By 九夏云深
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- ts file was generated at discord.gg/25ms
 
-local Window = Rayfield:CreateWindow({
-    Name = "基本上是FNF",
-    LoadingTitle = "加载中",
-    LoadingSubtitle = "by 九夏云深",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "MyHub",
-        FileName = "Settings"
-    },
-    Discord = {
-        Enabled = false
-    },
-    KeySystem = false
-})
-
--- Tab 1: Main (Three Test Buttons)
-local Tab1 = Window:CreateTab("信息", 4483345998)
-Tab1:CreateSection("必看")
-
-Tab1:CreateButton({
-    Name = "作者：九夏云深",
-    Callback = function()
-        print("1")
-    end
-})
-
-Tab1:CreateButton({
-    Name = "此脚本完全免费",
-    Callback = function()
-        print("2")
-    end
-})
-
-Tab1:CreateButton({
-    Name = "是挂三分毒，谨慎使用",
-    Callback = function()
-        print("3")
-    end
-})
-
-local Tab2 = Window:CreateTab("主要", 4483345998)
-Tab2:CreateSection("功能少别介意")
-
-local AutoPlayer = false
-local Player = 0
-local plr = game.Players.LocalPlayer
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
-local main = plr.PlayerGui:WaitForChild("Main") -- Ensure Main exists
-local accuracy = 50 
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
-spawn(function()
-    while task.wait() do
-        if AutoPlayer then
-            if plr.File and plr.File:FindFirstChild("CurrentPlayer") and plr.File.CurrentPlayer.Value then
-                if plr.File.CurrentPlayer.Value.Name == "Player1" then
-                    Player = 1
-                elseif plr.File.CurrentPlayer.Value.Name == "Player2" then
-                    Player = 2
-                else
-                    Player = 0
-                end
-            else
-                Player = 0
-            end
+local LocalPlayer = Players.LocalPlayer
+
+-- [ 核心配置 ] 
+local Config = {
+    KeyBinds = {
+        [1] = Enum.KeyCode.A, 
+        [2] = Enum.KeyCode.S, 
+        [3] = Enum.KeyCode.W, 
+        [4] = Enum.KeyCode.D
+    },
+    HitPixels = 40,       -- 黄金判定范围
+}
+
+-- [ 状态追踪 ]
+local State = {
+    Enabled = false,
+    Minimized = false,
+    ProcessedNotes = {},  -- 已处理的音符，防连击
+    ActiveKeys = {},      -- 正在按住的轨道，防死锁
+    MainLoop = nil
+}
+
+--========================================
+-- 1. GUI 界面构建
+--========================================
+local GUI = Instance.new("ScreenGui")
+GUI.Name = "AutoPlayer_Ultimate"
+GUI.ResetOnSpawn = false
+GUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame", GUI)
+MainFrame.Size = UDim2.new(0, 200, 0, 120)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -60)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+
+local UICorner = Instance.new("UICorner", MainFrame)
+UICorner.CornerRadius = UDim.new(0, 8)
+
+local TopBar = Instance.new("Frame", MainFrame)
+TopBar.Size = UDim2.new(1, 0, 0, 30)
+TopBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TopBar.BorderSizePixel = 0
+
+local Title = Instance.new("TextLabel", TopBar)
+Title.Size = UDim2.new(1, -70, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "AutoPlayer Pro (Physical Hold Lock)"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 12
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local CloseBtn = Instance.new("TextButton", TopBar)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+
+local MinBtn = Instance.new("TextButton", TopBar)
+MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Position = UDim2.new(1, -60, 0, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.new(1, 1, 1)
+
+local ToggleBtn = Instance.new("TextButton", MainFrame)
+ToggleBtn.Size = UDim2.new(0.85, 0, 0, 50)
+ToggleBtn.Position = UDim2.new(0.075, 0, 0.45, 0)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleBtn.Text = "OFF"
+ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 22
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+
+--========================================
+-- 2. 核心打谱逻辑（长条尾巴物理追踪法）
+--========================================
+
+local function releaseAllKeys()
+    for arrowIdx, isPressed in pairs(State.ActiveKeys) do
+        if isPressed then
+            VirtualInputManager:SendKeyEvent(false, Config.KeyBinds[arrowIdx], false, game)
+            State.ActiveKeys[arrowIdx] = false
         end
     end
-end)
+end
 
-local Tab2AutoPlayToggle = Tab2:CreateToggle({
-    Name = "自动点击",
-    CurrentValue = AutoPlayer,
-    Flag = "自动点击",
-    Callback = function(Value)
-        AutoPlayer = Value
+local function getActiveKeySync()
+    local mainGui = LocalPlayer.PlayerGui:FindFirstChild("Main")
+    local matchFrame = mainGui and mainGui:FindFirstChild("MatchFrame")
+    if not (matchFrame and matchFrame.Visible) then return nil end
+    
+    local playerSide = "KeySync1"
+    local file = LocalPlayer:FindFirstChild("File")
+    if file and file:FindFirstChild("CurrentPlayer") then
+        if file.CurrentPlayer.Value and file.CurrentPlayer.Value.Name == "Player2" then
+            playerSide = "KeySync2"
+        end
     end
-})
+    
+    return matchFrame:FindFirstChild(playerSide)
+end
 
-Tab2:CreateSlider({
-    Name = "准确度(acc)",
-    Range = {0, 100},
-    Increment = 1,
-    Suffix = "%",
-    CurrentValue = 50,
-    Flag = "准确度",
-    Callback = function(Value)
-        accuracy = Value
-    end
-})
-
-local function lol(num, keke)
-    local tyingarrow = {}
-    while true do
-        task.wait()
-        if AutoPlayer and Player > 0 then
-            local keySync = main.MatchFrame:FindFirstChild("KeySync" .. Player)
-            if keySync and keySync:FindFirstChild("Arrow" .. num) then
-                for i, v in pairs(keySync["Arrow" .. num].Notes:GetChildren()) do
-                    if v:IsA("ImageLabel") then
-                        -- Convert accuracy (0-100%) to speed (1 to 0.01)
-                        local speed = 1 - (accuracy / 100) * 0.99 -- 0% = 1, 100% = 0.01
-                        if v.Position.Y.Scale <= speed and not table.find(tyingarrow, v) then
-                            table.insert(tyingarrow, v)
-                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[keke], 0, nil)
-                            spawn(function()
-                                local hold = keySync["Arrow" .. num].Hold.Hitbox:WaitForChild(v.Name, 0.1)
-                                if hold and hold.Size.Y.Scale > 0 then
-                                    repeat task.wait() until hold.Position.Y.Scale + hold.Size.Y.Scale <= speed or not hold
-                                end
-                                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[keke], 0, nil)
-                                table.remove(tyingarrow, i)
-                            end)
-                        end
+local function processHit(arrowIdx, note, folder)
+    if State.ActiveKeys[arrowIdx] then return end 
+    State.ActiveKeys[arrowIdx] = true
+    
+    task.spawn(function()
+        local key = Config.KeyBinds[arrowIdx]
+        
+        -- 1. 模拟按下按键
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        
+        -- 2. 去 Notes 文件夹里寻找对应的 Hold 尾巴
+        local notesFolder = folder:FindFirstChild("Notes")
+        local activeHold = nil
+        
+        if notesFolder then
+            -- 优先精准匹配：根据你的描述，如果是音符 ID 关联，直接找 "Hold_对应名字"
+            activeHold = notesFolder:FindFirstChild("Hold_" .. tostring(note.Name))
+            
+            -- 如果名字没对上，执行后备方案：找当前轨道里任意一个名字带 "Hold" 的物体
+            if not activeHold then
+                for _, child in ipairs(notesFolder:GetChildren()) do
+                    if string.find(child.Name, "Hold") then
+                        activeHold = child
+                        break
                     end
                 end
             end
         end
-    end
+        
+        -- 3. 判断并执行长按逻辑
+        if activeHold then
+            -- 核心修复：彻底放弃时间计算，只要这个 Hold 尾巴还在游戏里没消失，就死死按住！
+            while activeHold and activeHold.Parent and activeHold.Visible do
+                RunService.Heartbeat:Wait()
+                
+                -- 双重保险：如果长条快被吃完了，高度变得极小（小于5像素），说明该松手了
+                if activeHold.AbsoluteSize.Y < 5 then
+                    break
+                end
+            end
+        else
+            -- 普通短音符：极短延迟后立刻松开
+            task.wait(0.03)
+        end
+
+        -- 4. 长条彻底结束或短音符结束，松开按键
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+        State.ActiveKeys[arrowIdx] = false
+    end)
 end
 
-spawn(function() lol(1, "A") end)
-spawn(function() lol(2, "S") end)
-spawn(function() lol(3, "W") end)
-spawn(function() lol(4, "D") end)
-
-local Tab3 = Window:CreateTab("其他", 4483345998)
-Tab3:CreateSection("基础玩家功能")
-
-Tab3:CreateSlider({
-    Name = "跑步速度",
-    Range = {16, 100},
-    Increment = 1,
-    Suffix = "",
-    CurrentValue = 16,
-    Flag = "跑步速度",
-    Callback = function(Value)
-        local humanoid = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = Value
+-- 扫描主循环
+local function engageAutoPlayer()
+    if State.MainLoop then State.MainLoop:Disconnect() end
+    
+    State.MainLoop = RunService.Heartbeat:Connect(function()
+        if not State.Enabled then return end
+        
+        local KeySync = getActiveKeySync()
+        if not KeySync then return end
+        
+        for i = 1, 4 do
+            -- 注意这里用的是正确的字符串拼接符号 `..`，不再会报错
+            local folder = KeySync:FindFirstChild("Arrow" .. i)
+            local receptor = folder and folder:FindFirstChild("Arrow")
+            local notes = folder and folder:FindFirstChild("Notes")
+            
+            if receptor and notes then
+                local targetY = receptor.AbsolutePosition.Y
+                
+                for _, note in ipairs(notes:GetChildren()) do
+                    if State.ProcessedNotes[note] or not note:IsA("GuiObject") or not note.Visible or note.Name == "Arrow" or string.find(note.Name, "Hold") then 
+                        continue 
+                    end
+                    
+                    local diff = note.AbsolutePosition.Y - targetY
+                    
+                    if math.abs(diff) <= Config.HitPixels then
+                        State.ProcessedNotes[note] = true 
+                        
+                        -- 把音符和它所在的 folder 传进去，以便直接查找尾巴
+                        processHit(i, note, folder)
+                        
+                        note.AncestryChanged:Once(function() 
+                            State.ProcessedNotes[note] = nil 
+                        end)
+                        
+                        break 
+                    end
+                end
+            end
         end
-    end
-})
-
-Tab3:CreateSlider({
-    Name = "跳跃高度",
-    Range = {50, 200},
-    Increment = 1,
-    Suffix = "",
-    CurrentValue = 50,
-    Flag = "跳跃高度",
-    Callback = function(Value)
-        local humanoid = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.JumpPower = Value
-        end
-    end
-})
-
-Rayfield:LoadConfiguration()
-
-if not Rayfield then
-    warn("加载失败")
+    end)
 end
+
+--========================================
+-- 3. UI 交互事件
+--========================================
+ToggleBtn.MouseButton1Click:Connect(function()
+    State.Enabled = not State.Enabled
+    
+    if State.Enabled then
+        ToggleBtn.Text = "ON"
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(40, 150, 40)}):Play()
+        engageAutoPlayer()
+    else
+        ToggleBtn.Text = "OFF"
+        TweenService:Create(ToggleBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 50)}):Play()
+        if State.MainLoop then State.MainLoop:Disconnect() end
+        releaseAllKeys()
+    end
+end)
+
+MinBtn.MouseButton1Click:Connect(function()
+    State.Minimized = not State.Minimized
+    MinBtn.Text = State.Minimized and "+" or "-"
+    local targetSize = State.Minimized and UDim2.new(0, 200, 0, 30) or UDim2.new(0, 200, 0, 120)
+    MainFrame:TweenSize(targetSize, "Out", "Quad", 0.25, true)
+    ToggleBtn.Visible = not State.Minimized
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    State.Enabled = false
+    if State.MainLoop then State.MainLoop:Disconnect() end
+    releaseAllKeys()
+    GUI:Destroy()
+end)
