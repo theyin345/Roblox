@@ -1,1 +1,173 @@
-theyin153，shuajishazhuanyong，Pzora091，Pzoa091
+-- 检查 Rayfield 是否加载成功，若失败则用 loadstring 自动拉取
+local Success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+end)
+
+if not Success or not Rayfield then
+    warn("Rayfield UI 加载失败，请检查网络或执行器环境！")
+    return
+end
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+
+-- 1. 防挂机反掉线
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+-- 2. 创建 Rayfield 窗口
+local Window = Rayfield:CreateWindow({
+    Name = "力量传奇 • 纯净免验证版",
+    LoadingTitle = "正在初始化脚本...",
+    LoadingSubtitle = "By Nova Hub 优化重构",
+    ConfigurationSaving = {
+        Enabled = false,
+        FolderName = nil,
+        FileName = "PowerLegendsConfig"
+    },
+    KeySystem = false, -- 彻底去除白名单卡密验证
+    KeySettings = {
+        Title = "卡密验证",
+        Subtitle = "无验证",
+        Note = "已内置解锁",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromLink = false,
+        Key = {""}
+    }
+})
+
+-- 3. 创建主标签页
+local MainTab = Window:CreateTab("核心功能", "home")
+
+Rayfield:Notify({
+    Title = "脚本加载成功",
+    Content = "已成功移除 Tamper 检测与白名单限制！",
+    Duration = 3,
+    Image = "check",
+})
+
+-- 4. 快速锻炼功能
+local farming = false
+local farmThread
+
+MainTab:CreateToggle({
+    Name = "快速锻炼 (深蹲)",
+    CurrentValue = false,
+    Flag = "FastFarmToggle",
+    Callback = function(state)
+        farming = state
+        if farming then
+            if farmThread then task.cancel(farmThread) end
+            farmThread = task.spawn(function()
+                while farming do
+                    task.wait()
+                    for P = 1, 18 do
+                        pcall(function()
+                            local machine = workspace.Machines.Squats
+                            local part = machine:FindFirstChild("Muscle King Gym")
+                            if part then
+                                ReplicatedStorage.Events.Remotes.Machine:FireServer("Rep", part:FindFirstChild("6.1"))
+                            end
+                        end)
+                    end
+                end
+            end)
+            Rayfield:Notify({ Title = "提示", Content = "已开启快速锻炼", Duration = 2 })
+        else
+            if farmThread then task.cancel(farmThread) end
+            Rayfield:Notify({ Title = "提示", Content = "已停止快速锻炼", Duration = 2 })
+        end
+    end,
+})
+
+-- 5. 无间隔重生功能
+local rebirthing = false
+local rebirthThread
+
+MainTab:CreateToggle({
+    Name = "无间隔重生",
+    CurrentValue = false,
+    Flag = "FastRebirthToggle",
+    Callback = function(state)
+        rebirthing = state
+        if rebirthing then
+            if rebirthThread then task.cancel(rebirthThread) end
+            rebirthThread = task.spawn(function()
+                while rebirthing do
+                    task.wait()
+                    pcall(function()
+                        ReplicatedStorage.Events.Remotes.Rebirth:FireServer("rebirthRequest")
+                    end)
+                end
+            end)
+            Rayfield:Notify({ Title = "提示", Content = "已开启无间隔重生", Duration = 2 })
+        else
+            if rebirthThread then task.cancel(rebirthThread) end
+            Rayfield:Notify({ Title = "提示", Content = "已停止无间隔重生", Duration = 2 })
+        end
+    end,
+})
+
+-- 6. 优化环境 (清理多余跳字弹窗/减少卡顿)
+local optimizing = false
+local optimizeThread
+
+local function clearUIElements()
+    pcall(function()
+        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if playerGui then
+            for _, gui in ipairs(playerGui:GetChildren()) do
+                if gui:IsA("ScreenGui") then
+                    for _, desc in ipairs(gui:GetDescendants()) do
+                        if (desc:IsA("TextLabel") or desc:IsA("TextButton")) and desc.Text then
+                            local txt = desc.Text
+                            if txt:find("%+%d+") or txt:find("Coins") or txt:find("金币") then
+                                local parentGui = desc:FindFirstAncestorWhichIsA("ScreenGui")
+                                if parentGui then
+                                    parentGui:Destroy()
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+MainTab:CreateToggle({
+    Name = "自动优化环境 (自动清理干扰UI)",
+    CurrentValue = false,
+    Flag = "OptimizeToggle",
+    Callback = function(state)
+        optimizing = state
+        if optimizing then
+            if optimizeThread then task.cancel(optimizeThread) end
+            optimizeThread = task.spawn(function()
+                while optimizing do
+                    pcall(clearUIElements)
+                    task.wait(0.5)
+                end
+            end)
+            Rayfield:Notify({ Title = "提示", Content = "环境优化已开启", Duration = 2 })
+        else
+            if optimizeThread then task.cancel(optimizeThread) end
+            Rayfield:Notify({ Title = "提示", Content = "环境优化已关闭", Duration = 2 })
+        end
+    end,
+})
+
+MainTab:CreateButton({
+    Name = "立即清理一次垃圾画面",
+    Callback = function()
+        clearUIElements()
+        Rayfield:Notify({ Title = "成功", Content = "已清理完毕", Duration = 2 })
+    end,
+})
