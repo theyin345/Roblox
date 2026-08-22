@@ -60,7 +60,7 @@ local function cloneYellowSqueak(loopCount, switchGetter)
                     if shopItem then
                         game:GetService("ReplicatedStorage").cPetShopRemote:InvokeServer(shopItem)
                         task.wait(0.1)
-                        redKitty = basic:FindFirstChild("Yellow Squeak")
+                        yellowSqueak = basic:FindFirstChild("Yellow Squeak")
                     end
                 end
 
@@ -93,7 +93,7 @@ spawn(function()
                         end
                         if #yellowSqueaks > 1 then
                             for i = 2, #yellowSqueaks do
-                                game:GetService("ReplicatedStorage").rEvents.sellPetEvent:FireServer("sellPet", yellowSqueaks[i])
+                                game:GetService("ReplicatedStorage").rEvents.sellPetEvent:FireServer("sellPet", yellowSqueaks)
                             end
                         end
                     end
