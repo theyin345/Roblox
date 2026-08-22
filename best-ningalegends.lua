@@ -66,7 +66,7 @@ local function cloneYellowSqueak(loopCount, switchGetter)
 
                 if yellowSqueak then
                     for i = 1, loopCount do
-                        game:GetService("ReplicatedStorage").rEvents.petCloneEvent:FireServer("clonePet", yellowSqueak)
+                        game:GetService("ReplicatedStorage").rEvents.petCloneEvent:FireServer("clonePet", yellowSqueaks)
                     end
                 end
             end)
